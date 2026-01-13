@@ -1052,7 +1052,7 @@ async def download_direct(
     success, stdout, stderr = await imagemagick_service.execute(command)
     
     if not success or not Path(validated_output_path).exists():
-    raise HTTPException(status_code=500, detail=f"Processing failed: {stderr}")
+        raise HTTPException(status_code=500, detail=f"Processing failed: {stderr}")
 
     
     # Get MIME type
