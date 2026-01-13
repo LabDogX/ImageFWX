@@ -1,0 +1,13 @@
+name: "CodeQL Config"
+
+paths-ignore:
+  - "**/*.md"
+  - "docs/**"
+
+queries:
+  - uses: security-and-quality
+
+query-filters:
+  - exclude:
+      id: py/path-injection
+      problem.severity: recommendation
