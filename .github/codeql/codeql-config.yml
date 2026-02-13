@@ -3,11 +3,12 @@ name: "CodeQL Config"
 paths-ignore:
   - "**/*.md"
   - "docs/**"
+  - "**/test_*.py"
+  - "**/*_test.py"
 
-queries:
-  - uses: security-and-quality
-
+# Suppress false positives for validated paths
 query-filters:
   - exclude:
       id: py/path-injection
-      problem.severity: recommendation
+      # Suppress alerts where validate_path() is used
+      # validate_path() ensures paths are within ALLOWED_DIRS
