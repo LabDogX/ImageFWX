@@ -1045,7 +1045,7 @@ async def download_direct(
     # Build and execute command
     command = await imagemagick_service.build_command(
         validated_input_path,
-        output_path,
+        validated_output_path,
         operations
     )
     
