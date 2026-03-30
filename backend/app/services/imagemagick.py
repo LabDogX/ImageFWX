@@ -197,13 +197,9 @@ class ImageMagickService:
                 if width > 0 and height > 0:
                     geometry = f"{width}x{height}"
                     if mode == "force":
-                        # Force exact dimensions (ignore aspect ratio)
                         geometry += "!"
                     elif mode == "fill":
-                        # Fill/cover - resize to fill the box (may need crop after)
                         geometry += "^"
-                    # For "fit" mode (contain) - no suffix means fit within dimensions
-                    # maintaining aspect ratio, will enlarge or shrink as needed
                     cmd_parts.append(f"-resize {geometry}")
                 elif params.get("percent"):
                     pct = int(params["percent"])
@@ -218,10 +214,8 @@ class ImageMagickService:
                     cmd_parts.append(f"-crop {width}x{height}+{x}+{y} +repage")
             
             elif op_name == "crop_aspect":
-                # Crop to aspect ratio (centered, maximum size)
                 aspect_w = int(params.get("aspect_w", 1))
                 aspect_h = int(params.get("aspect_h", 1))
-                # Use ImageMagick's gravity + extent for centered crop to aspect ratio
                 cmd_parts.append("-gravity center")
                 cmd_parts.append(f"-crop {aspect_w}:{aspect_h}")
                 cmd_parts.append("+repage")
@@ -245,7 +239,6 @@ class ImageMagickService:
                 import logging
                 logger = logging.getLogger(__name__)
                 if css_blur > 0:
-                    # Scale blur based on image size (CSS blur calibrated for ~800px preview)
                     if img_width and img_width > 800:
                         scale_factor = img_width / 800
                         sigma = css_blur * scale_factor
@@ -281,11 +274,9 @@ class ImageMagickService:
                 cmd_parts.append("-auto-orient")
             
             elif op_name == "enhance":
-                # More visible enhancement than basic -enhance
-                # Combines: normalize + slight contrast boost + subtle sharpening
                 cmd_parts.append("-normalize")
-                cmd_parts.append("-modulate 100,110,100")  # +10% saturation
-                cmd_parts.append("-unsharp 0x0.5+0.5+0.008")  # subtle sharpening
+                cmd_parts.append("-modulate 100,110,100")
+                cmd_parts.append("-unsharp 0x0.5+0.5+0.008")
             
             elif op_name == "auto-level":
                 cmd_parts.append("-auto-level")
@@ -305,17 +296,13 @@ class ImageMagickService:
             elif op_name == "annotate" or op_name == "watermark":
                 text = params.get("text", "")
                 if text:
-                    # Sanitize text - remove dangerous characters
                     text = re.sub(r'[`$\\]', '', text)
                     position = params.get("position", "southeast").lower()
                     font_size_base = int(params.get("font_size", 24))
-                    # Scale font size based on image dimensions (24pt looks good on ~800px image)
-                    # For larger images, scale up proportionally
                     font_size = max(font_size_base, int(font_size_base * (img_width / 800))) if img_width else font_size_base
                     color = params.get("color", "white")
                     opacity = float(params.get("opacity", 0.5))
                     
-                    # Map position to gravity
                     gravity_map = {
                         "northwest": "NorthWest",
                         "north": "North", 
@@ -329,11 +316,9 @@ class ImageMagickService:
                     }
                     gravity = gravity_map.get(position, "SouthEast")
                     
-                    # Calculate offset proportional to font size (shadow offset ~5% of font size)
                     shadow_offset = max(2, int(font_size * 0.05))
-                    text_offset = max(10, int(font_size * 0.4))  # margin from edge
+                    text_offset = max(10, int(font_size * 0.4))
                     
-                    # Build annotate command with shadow for visibility
                     cmd_parts.append(f"-gravity {gravity}")
                     cmd_parts.append(f"-pointsize {font_size}")
                     cmd_parts.append(f"-fill 'rgba(0,0,0,{opacity})'")
@@ -342,24 +327,19 @@ class ImageMagickService:
                     cmd_parts.append(f"-annotate +{text_offset}+{text_offset} {shlex.quote(text)}")
             
             elif op_name == "transparent":
-                # Make a color transparent (remove background)
                 color = params.get("color", "white").lower()
                 fuzz = int(params.get("fuzz", 10))
-                fuzz = max(0, min(100, fuzz))  # Clamp 0-100
+                fuzz = max(0, min(100, fuzz))
                 
                 if color == "auto":
-                    # Try to detect background color from corners
-                    # Use flood fill from corners with transparency
                     cmd_parts.append("-alpha set")
                     cmd_parts.append(f"-fuzz {fuzz}%")
-                    # Fill from all 4 corners
                     cmd_parts.append("-fill none -draw 'color 0,0 floodfill'")
                 elif color in ("white", "black", "red", "green", "blue", "transparent"):
                     cmd_parts.append("-alpha set")
                     cmd_parts.append(f"-fuzz {fuzz}%")
                     cmd_parts.append(f"-transparent {color}")
                 else:
-                    # Treat as hex color
                     cmd_parts.append("-alpha set")
                     cmd_parts.append(f"-fuzz {fuzz}%")
                     cmd_parts.append(f"-transparent '{color}'")
@@ -379,22 +359,18 @@ class ImageMagickService:
         Build command from raw user input (terminal mode)
         Returns (command, error_message)
         """
-        # Validate command
         is_valid, error = self.validate_command(raw_command)
         if not is_valid:
             return "", error
         
         magick_cmd = await self._get_magick_cmd()
         
-        # Replace placeholders
         command = raw_command.replace("{input}", shlex.quote(input_path))
         command = command.replace("{output}", shlex.quote(output_path))
         
-        # Ensure command starts with magick/convert
         if not command.strip().startswith(("magick", "convert")):
             command = f"{magick_cmd} {command}"
         
-        # Add resource limits
         limits = f"-limit memory {self.memory_limit} -limit time {self.timeout}"
         if command.strip().startswith("magick"):
             command = command.replace("magick ", f"magick {limits} ", 1)
@@ -413,7 +389,6 @@ class ImageMagickService:
         import signal
         logger = logging.getLogger(__name__)
         
-        # Create minimal clean environment
         clean_env = {
             'PATH': '/usr/local/bin:/usr/bin:/bin',
             'HOME': '/tmp',
@@ -423,9 +398,7 @@ class ImageMagickService:
         }
         
         def preexec():
-            """Pre-exec function to further isolate the child process"""
-            os.setsid()  # Create new session
-            # Reset signal handlers
+            os.setsid()
             signal.signal(signal.SIGINT, signal.SIG_DFL)
             signal.signal(signal.SIGTERM, signal.SIG_DFL)
         
@@ -463,15 +436,11 @@ class ImageMagickService:
         """
         Execute ImageMagick command with timeout and resource limits
         Returns (success, stdout, stderr)
-        
-        Uses subprocess.run in a thread pool with clean environment
-        to avoid ONNX Runtime library conflicts.
         """
         import concurrent.futures
         
         loop = asyncio.get_event_loop()
         
-        # Run in thread pool to avoid blocking
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             result = await loop.run_in_executor(
                 executor,
@@ -485,7 +454,6 @@ class ImageMagickService:
         """Get image metadata using ImageMagick identify"""
         magick_cmd = await self._get_magick_cmd()
         
-        # Use 'identify' command (works with both ImageMagick 6 and 7)
         command = f"identify -verbose {shlex.quote(file_path)}"
         
         success, stdout, stderr = await self.execute(command)
@@ -493,7 +461,6 @@ class ImageMagickService:
         if not success:
             return None
         
-        # Parse output
         info = {
             "format": None,
             "width": None,
@@ -564,7 +531,6 @@ class ImageMagickService:
                 logger.info(f"pdftoppm returncode: {process.returncode}, checking for: {temp_file}")
                 
                 if process.returncode == 0 and Path(temp_file).exists():
-                    # Now resize to thumbnail size - try both commands
                     for resize_cmd_name in ["magick", "convert"]:
                         resize_cmd = f'{resize_cmd_name} "{temp_file}" -thumbnail "{size}x{size}>" -quality 85 "{output_path}"'
                         success, _, resize_err = await self.execute(resize_cmd)
@@ -573,7 +539,6 @@ class ImageMagickService:
                         if "not found" not in resize_err.lower():
                             break
                     
-                    # Clean up temp file
                     try:
                         Path(temp_file).unlink()
                     except:
@@ -623,7 +588,6 @@ class ImageMagickService:
                 await asyncio.wait_for(process.communicate(), timeout=120)
                 
                 if Path(gs_output).exists():
-                    # Resize - try both commands
                     for resize_cmd_name in ["magick", "convert"]:
                         resize_cmd = f'{resize_cmd_name} "{gs_output}" -thumbnail "{size}x{size}>" -quality 85 "{output_path}"'
                         success, _, _ = await self.execute(resize_cmd)
@@ -639,50 +603,43 @@ class ImageMagickService:
             except Exception as e:
                 logger.exception(f"GS exception: {e}")
         else:
-            # Check if input is PNG - use Pillow instead (ImageMagick has conflicts with PNG libs)
-            is_png = input_path.lower().endswith('.png')
-            
-            if is_png:
-                logger.info(f"Using Pillow for PNG thumbnail: {input_path}")
-                try:
-                    from PIL import Image as PILImage
+            # ===== FIX: Use Pillow for ALL thumbnails (fast, no subprocess overhead) =====
+            try:
+                from PIL import Image as PILImage
+                
+                with PILImage.open(input_path) as img:
+                    # Convert RGBA/P to RGB for WebP/JPEG output compatibility
+                    if img.mode in ('RGBA', 'LA', 'P'):
+                        # Keep alpha for WebP
+                        if output_path.lower().endswith('.webp'):
+                            img = img.convert('RGBA')
+                        else:
+                            background = PILImage.new('RGB', img.size, (255, 255, 255))
+                            if img.mode == 'P':
+                                img = img.convert('RGBA')
+                            background.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
+                            img = background
+                    elif img.mode != 'RGB':
+                        img = img.convert('RGB')
                     
-                    with PILImage.open(input_path) as img:
-                        # Save as PNG to preserve transparency
+                    # Resize to thumbnail dimensions
+                    img.thumbnail((size, size), PILImage.LANCZOS)
+                    
+                    # Save in appropriate format
+                    if output_path.lower().endswith('.webp'):
+                        img.save(output_path, 'WEBP', quality=85)
+                    elif output_path.lower().endswith('.png'):
                         img.save(output_path, 'PNG', optimize=True)
-                        # Save as PNG to preserve transparency
-                        img.save(output_path, 'PNG', optimize=True)
-                        # Save as PNG to preserve transparency
-                        img.save(output_path, 'PNG', optimize=True)
-                        # Save as PNG to preserve transparency
-                        img.save(output_path, 'PNG', optimize=True)
-                        # Save as PNG to preserve transparency
-                        img.save(output_path, 'PNG', optimize=True)
-                        # Save as PNG to preserve transparency
-                        img.save(output_path, 'PNG', optimize=True)
-                        # Save as PNG to preserve transparency
-                        img.save(output_path, 'PNG', optimize=True)
-                        # Save as PNG to preserve transparency
-                        img.save(output_path, 'PNG', optimize=True)
-                        # Save as PNG to preserve transparency
-                        img.save(output_path, 'PNG', optimize=True)
-                        # Save as PNG to preserve transparency
-                        img.save(output_path, 'PNG', optimize=True)
-                        # Save as PNG to preserve transparency
-                        img.save(output_path, 'PNG', optimize=True)
-                        # Save as PNG to preserve transparency
-                        img.save(output_path, 'PNG', optimize=True)
-                        # Save as PNG to preserve transparency
-                        img.save(output_path, 'PNG', optimize=True)
-                        # Save as PNG to preserve transparency
-                        img.save(output_path, 'PNG', optimize=True)
-                        if Path(output_path).exists():
-                            logger.info(f"PNG thumbnail created with Pillow: {output_path}")
-                            return True
-                except Exception as e:
-                    logger.exception(f"Pillow thumbnail exception: {e}")
+                    else:
+                        img.save(output_path, 'JPEG', quality=85)
+                
+                if Path(output_path).exists():
+                    logger.info(f"Thumbnail created with Pillow: {output_path} ({Path(output_path).stat().st_size} bytes)")
+                    return True
+            except Exception as e:
+                logger.warning(f"Pillow thumbnail failed: {e}, falling back to ImageMagick")
             
-            # Regular image - use ImageMagick
+            # Fallback: use ImageMagick (for formats Pillow can't handle)
             for cmd in ["magick", "convert"]:
                 try:
                     command = f'{cmd} "{input_path}" -thumbnail "{size}x{size}>" -quality 85 "{output_path}"'
@@ -710,7 +667,6 @@ class ImageMagickService:
         density: int = 150
     ) -> bool:
         """Create a preview image of a PDF page"""
-        # Use ImageMagick to convert PDF page to image
         for cmd in ["magick", "convert"]:
             command = f"{cmd} -density {density} {shlex.quote(input_path)}[{page}] -background white -alpha remove -quality 90 {shlex.quote(output_path)}"
             success, _, stderr = await self.execute(command)
@@ -734,18 +690,14 @@ class ImageMagickService:
         import logging
         logger = logging.getLogger(__name__)
         
-        # Verify input file exists
         if not Path(input_path).exists():
             logger.error(f"Input file not found: {input_path}")
             return None
         
-        # Generate temp output path
         output_path = self.generate_temp_path("webp")
         
         try:
-            # Build command with resize for preview
             preview_ops = operations.copy()
-            # Add resize to limit preview size
             preview_ops.insert(0, {
                 "operation": "resize",
                 "params": {"width": max_size, "height": max_size, "mode": "fit"}
@@ -757,11 +709,9 @@ class ImageMagickService:
             success, stdout, stderr = await self.execute(command)
             
             if success and Path(output_path).exists():
-                # Read and encode as base64
                 with open(output_path, "rb") as f:
                     data = base64.b64encode(f.read()).decode()
                 
-                # Clean up temp file
                 Path(output_path).unlink(missing_ok=True)
                 
                 return f"data:image/webp;base64,{data}"
@@ -771,7 +721,6 @@ class ImageMagickService:
                 
         except Exception as e:
             logger.exception(f"Error generating preview: {e}")
-            # Clean up temp file if exists
             Path(output_path).unlink(missing_ok=True)
             return None
     

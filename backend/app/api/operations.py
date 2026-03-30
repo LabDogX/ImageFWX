@@ -125,6 +125,18 @@ class CommandPreviewResponse(BaseModel):
     error: Optional[str] = None
 
 
+# ===== Background thumbnail helper =====
+async def _generate_thumbnail_background(output_path: str, thumb_path: str, size: int = 300):
+    """Generate thumbnail in background - does not block the HTTP response."""
+    import logging
+    logger = logging.getLogger(__name__)
+    try:
+        await imagemagick_service.create_thumbnail(output_path, thumb_path, size)
+        logger.info(f"Background thumbnail created: {thumb_path}")
+    except Exception as e:
+        logger.warning(f"Background thumbnail failed: {e}")
+
+
 @router.post("/process", response_model=JobResponse)
 async def process_operation(
     request: ProcessRequest,
@@ -440,7 +452,6 @@ async def live_preview(
         operations = [op.model_dump() for op in request.operations]
         
         if not operations or len(operations) == 0:
-            # Return original image
             import base64
             with open(image.file_path, "rb") as f:
                 data = base64.b64encode(f.read()).decode()
@@ -457,7 +468,6 @@ async def live_preview(
         if preview_data:
             return {"preview": preview_data, "success": True}
         else:
-            # If preview fails, return original
             import base64
             with open(image.file_path, "rb") as f:
                 data = base64.b64encode(f.read()).decode()
@@ -484,7 +494,6 @@ async def remove_background(
     """
     user_id = current_user.id if current_user else None
     
-    # Check if AI service is available
     from app.services.ai_service import ai_service
     if not await ai_service.is_available():
         raise HTTPException(
@@ -492,7 +501,6 @@ async def remove_background(
             detail="AI background removal service is not available"
         )
     
-    # Get image records
     query = select(Image).where(Image.id.in_(request.image_ids))
     result = await db.execute(query)
     images = result.scalars().all()
@@ -502,10 +510,8 @@ async def remove_background(
     
     input_files = [img.file_path for img in images]
     
-    # Generate job ID
     job_id = f"bg_removal_{uuid.uuid4().hex}"
     
-    # Create job record
     job = Job(
         job_id=job_id,
         user_id=user_id,
@@ -522,7 +528,6 @@ async def remove_background(
     db.add(job)
     await db.commit()
     
-    # Enqueue job
     from app.workers.tasks import process_background_removal
     queue_service.enqueue(
         process_background_removal,
@@ -531,7 +536,7 @@ async def remove_background(
         request.alpha_matting,
         user_id,
         job_id=job_id,
-        timeout=len(images) * 120  # 2 minutes per image max
+        timeout=len(images) * 120
     )
     
     return JobResponse(
@@ -556,12 +561,10 @@ async def remove_background_single(
     """Remove background from a single image (for editor)"""
     user_id = current_user.id if current_user else None
     
-    # Check AI
     from app.services.ai_service import ai_service
     if not await ai_service.is_available():
         raise HTTPException(status_code=503, detail="AI service not available")
     
-    # Get image
     query = select(Image).where(Image.id == request.image_id)
     result = await db.execute(query)
     image = result.scalar_one_or_none()
@@ -602,6 +605,7 @@ async def remove_background_single(
 @router.post("/remove-background-sync")
 async def remove_background_sync(
     request: SingleRemoveBackgroundRequest,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: Optional[User] = Depends(get_current_user_optional)
 ):
@@ -620,12 +624,10 @@ async def remove_background_sync(
     
     user_id = current_user.id if current_user else None
     
-    # Check AI
     if not await ai_service.is_available():
         logger.error("AI service not available")
         raise HTTPException(status_code=503, detail="AI service not available")
     
-    # Get image
     query = select(Image).where(Image.id == request.image_id)
     result = await db.execute(query)
     image = result.scalar_one_or_none()
@@ -633,11 +635,9 @@ async def remove_background_sync(
     if not image:
         raise HTTPException(status_code=404, detail="Image not found")
     
-    # Validate file path
     validated_input_path = validate_path(image.file_path)
     logger.info(f"Validated image path: {validated_input_path}")
     
-    # Generate output path
     output_path = file_service.get_output_path(
         Path(validated_input_path).name,
         "png",
@@ -645,7 +645,6 @@ async def remove_background_sync(
     )
     
     try:
-        # Run AI background removal
         logger.info("Starting background removal...")
         result_path = await ai_service.remove_background(
             validated_input_path,
@@ -657,28 +656,25 @@ async def remove_background_sync(
             logger.error("Background removal failed - no result file")
             raise HTTPException(status_code=500, detail="Background removal failed")
         
-        # Generate thumbnail for the processed image
+        # Generate thumbnail in background (non-blocking)
         thumb_dir = Path(output_path).parent / "thumbnails"
         thumb_dir.mkdir(parents=True, exist_ok=True)
-        thumb_path = thumb_dir / f"{Path(output_path).stem}_thumb.webp"
+        thumb_path = str(thumb_dir / f"{Path(output_path).stem}_thumb.webp")
+        background_tasks.add_task(_generate_thumbnail_background, output_path, thumb_path, 300)
         
-        await imagemagick_service.create_thumbnail(output_path, str(thumb_path), 300)
-        thumbnail_path = str(thumb_path) if thumb_path.exists() else None
-        
-        # Create new image record
+        # Create new image record (thumbnail_path set even though file not yet created)
         stored_filename = Path(output_path).name
         new_image = Image(
             user_id=user_id,
             original_filename=f"nobg_{image.original_filename}",
             stored_filename=stored_filename,
             file_path=output_path,
-            thumbnail_path=thumbnail_path,
+            thumbnail_path=thumb_path,
             mime_type="image/png",
             file_size=Path(output_path).stat().st_size,
         )
         db.add(new_image)
         
-        # Create history entry
         job = Job(
             job_id=f"bg_{uuid.uuid4().hex[:8]}",
             user_id=user_id,
@@ -715,15 +711,12 @@ class UpscaleRequest(BaseModel):
 @router.post("/upscale")
 async def upscale_image(
     request: UpscaleRequest,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: Optional[User] = Depends(get_current_user_optional)
 ):
     """
     Upscale image resolution.
-    
-    Methods:
-    - lanczos: Fast, uses high-quality Lanczos resampling with sharpening
-    - esrgan: AI-based upscaling (requires Real-ESRGAN, best quality but slow)
     """
     from pathlib import Path
     from app.services.ai_service import ai_service
@@ -733,7 +726,6 @@ async def upscale_image(
     logger = logging.getLogger(__name__)
     logger.info(f"Upscale request: image_id={request.image_id}, scale={request.scale}, method={request.method}")
     
-    # Get image
     result = await db.execute(select(Image).where(Image.id == request.image_id))
     image = result.scalar_one_or_none()
     
@@ -743,12 +735,10 @@ async def upscale_image(
     
     logger.info(f"Found image: {image.file_path}")
     
-    # Check permissions
     user_id = current_user.id if current_user else None
     if image.user_id and image.user_id != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
     
-    # Prepare output path
     output_path = await file_service.get_processed_path(
         f"upscale_{request.scale}x_{image.stored_filename}",
         user_id
@@ -756,7 +746,6 @@ async def upscale_image(
     logger.info(f"Output path: {output_path}")
     
     try:
-        # Perform upscaling
         logger.info("Starting upscale operation...")
         result_path = await ai_service.upscale(
             image.file_path,
@@ -771,29 +760,25 @@ async def upscale_image(
             logger.error("Upscaling failed - no result file")
             raise HTTPException(status_code=500, detail="Upscaling failed")
         
-        # Get new image dimensions
         from PIL import Image as PILImage
         with PILImage.open(result_path) as img:
             new_width, new_height = img.size
         
         logger.info(f"New dimensions: {new_width}x{new_height}")
         
-        # Generate thumbnail
+        # Generate thumbnail in background
         thumb_dir = Path(output_path).parent / "thumbnails"
         thumb_dir.mkdir(parents=True, exist_ok=True)
-        thumb_path = thumb_dir / f"{Path(output_path).stem}_thumb.webp"
+        thumb_path = str(thumb_dir / f"{Path(output_path).stem}_thumb.webp")
+        background_tasks.add_task(_generate_thumbnail_background, output_path, thumb_path, 300)
         
-        await imagemagick_service.create_thumbnail(output_path, str(thumb_path), 300)
-        thumbnail_path = str(thumb_path) if thumb_path.exists() else None
-        
-        # Create new image record
         stored_filename = Path(output_path).name
         new_image = Image(
             user_id=user_id,
             original_filename=f"upscale_{request.scale}x_{image.original_filename}",
             stored_filename=stored_filename,
             file_path=output_path,
-            thumbnail_path=thumbnail_path,
+            thumbnail_path=thumb_path,
             mime_type="image/png",
             file_size=Path(output_path).stat().st_size,
             width=new_width,
@@ -801,7 +786,6 @@ async def upscale_image(
         )
         db.add(new_image)
         
-        # Create history entry
         job = Job(
             job_id=f"up_{uuid.uuid4().hex[:8]}",
             user_id=user_id,
@@ -847,18 +831,20 @@ async def get_ai_capabilities():
 class ProcessSyncRequest(BaseModel):
     image_id: int
     operations: List[Operation]
-    output_format: str = "jpg"  # Changed from png - png causes segfault with rembg libs
+    output_format: str = "jpg"
 
 
 @router.post("/process-sync")
 async def process_sync(
     request: ProcessSyncRequest,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: Optional[User] = Depends(get_current_user_optional)
 ):
     """
     Process image synchronously and return URL to result.
     Used for instant crop preview in editor.
+    Thumbnail is generated in the background to avoid blocking.
     """
     from pathlib import Path
     from app.services.file_service import file_service
@@ -906,11 +892,20 @@ async def process_sync(
     else:
         operation_type = "edit"
     
-    # For PDF input, ALWAYS force PNG output since ImageMagick rasterizes PDFs
+    # ===== FIX: Preserve input format instead of always converting to PNG =====
+    # Detect input format and use the same for output (unless explicitly overridden)
     actual_output_format = request.output_format
     is_pdf_input = validated_input_path.lower().endswith('.pdf') or (image.mime_type and 'pdf' in image.mime_type.lower())
+    
     if is_pdf_input:
-        actual_output_format = 'png'  # PDF is rasterized, output as PNG
+        actual_output_format = 'png'
+    elif actual_output_format == 'png':
+        # If input is JPG/JPEG and output was defaulting to PNG, keep as JPG
+        # This prevents massive file size inflation (1.6MB JPG -> 20MB PNG)
+        input_ext = Path(validated_input_path).suffix.lower().lstrip('.')
+        if input_ext in ('jpg', 'jpeg', 'webp'):
+            actual_output_format = input_ext if input_ext != 'jpeg' else 'jpg'
+            logger.info(f"PROCESS-SYNC: Preserving input format {input_ext} instead of PNG")
     
     # Generate output path
     output_path = file_service.get_output_path(
@@ -936,13 +931,13 @@ async def process_sync(
     if not success or not Path(output_path).exists():
         raise HTTPException(status_code=500, detail=f"Processing failed: {stderr}")
     
-    # Generate thumbnail for the processed image
+    # ===== FIX: Generate thumbnail in BACKGROUND (non-blocking) =====
     thumb_dir = Path(output_path).parent / "thumbnails"
     thumb_dir.mkdir(parents=True, exist_ok=True)
-    thumb_path = thumb_dir / f"{Path(output_path).stem}_thumb.webp"
+    thumb_path = str(thumb_dir / f"{Path(output_path).stem}_thumb.webp")
     
-    await imagemagick_service.create_thumbnail(output_path, str(thumb_path), 300)
-    thumbnail_path = str(thumb_path) if thumb_path.exists() else None
+    # Schedule thumbnail generation in background - response returns immediately
+    background_tasks.add_task(_generate_thumbnail_background, output_path, thumb_path, 300)
     
     # Create new image record for the processed image
     stored_filename = Path(output_path).name
@@ -951,7 +946,7 @@ async def process_sync(
         original_filename=f"edited_{image.original_filename}",
         stored_filename=stored_filename,
         file_path=output_path,
-        thumbnail_path=thumbnail_path,
+        thumbnail_path=thumb_path,  # Path is set, file will be created in background
         mime_type=f"image/{actual_output_format}",
         file_size=Path(output_path).stat().st_size,
     )
@@ -966,14 +961,14 @@ async def process_sync(
         progress=100,
         input_files=[request.image_id],
         output_files=[output_path],
-        parameters={"operations": operations, "output_format": request.output_format},
+        parameters={"operations": operations, "output_format": actual_output_format},
     )
     db.add(job)
     
     await db.commit()
     await db.refresh(new_image)
     
-    # Return URL to new image
+    # Return URL to new image IMMEDIATELY (thumbnail generates in background)
     return {
         "success": True,
         "image_id": new_image.id,
@@ -998,7 +993,6 @@ async def download_direct(
     Process image and return file directly for download.
     Does not save to database - just processes and streams file.
     """
-    # Validate output format
     allowed_formats = {'webp', 'png', 'jpg', 'jpeg', 'gif', 'avif', 'tiff', 'bmp'}
     if request.output_format.lower() not in allowed_formats:
         raise HTTPException(status_code=400, detail="Invalid output format")
@@ -1010,7 +1004,6 @@ async def download_direct(
     
     user_id = current_user.id if current_user else None
     
-    # Get image
     query = select(Image).where(Image.id == request.image_id)
     result = await db.execute(query)
     image = result.scalar_one_or_none()
@@ -1018,31 +1011,24 @@ async def download_direct(
     if not image:
         raise HTTPException(status_code=404, detail="Image not found")
     
-    # Validate file path is within allowed directories
     validated_input_path = validate_path(image.file_path)
     
-    # Build operations
     operations = [op.model_dump() for op in request.operations]
     
-    # Sanitize output format
     actual_output_format = request.output_format.lower().replace('/', '').replace('\\', '').replace('..', '')
     
-    # For PDF input, force image output since ImageMagick rasterizes PDFs
     is_pdf_input = validated_input_path.lower().endswith('.pdf') or (image.mime_type and 'pdf' in image.mime_type.lower())
     if is_pdf_input:
-        actual_output_format = 'png'  # PDF is rasterized, output as PNG
+        actual_output_format = 'png'
     
-    # Generate output filename
     original_name = Path(image.original_filename).stem
     output_filename = f"edited_{original_name}.{actual_output_format}"
     
     temp_filename = f"download_{uuid.uuid4().hex}.{actual_output_format}"
     output_path = os.path.join(tempfile.gettempdir(), temp_filename)
 
-    # SECURITY: Validate output path to prevent path traversal
     validated_output_path = validate_path(output_path)
     
-    # Build and execute command
     command = await imagemagick_service.build_command(
         validated_input_path,
         validated_output_path,
@@ -1054,8 +1040,6 @@ async def download_direct(
     if not success or not Path(validated_output_path).exists():
         raise HTTPException(status_code=500, detail=f"Processing failed: {stderr}")
 
-    
-    # Get MIME type
     mime_types = {
         "webp": "image/webp",
         "png": "image/png",
@@ -1065,8 +1049,6 @@ async def download_direct(
     }
     media_type = mime_types.get(actual_output_format, "application/octet-stream")
     
-    # Return file for download
-    # SECURITY: Use validated path to prevent path traversal
     return FileResponse(
         path=validated_output_path,
         filename=output_filename,
@@ -1074,7 +1056,7 @@ async def download_direct(
         headers={
         "Content-Disposition": f'attachment; filename="{output_filename}"'
        },
-       background=None  # Don't delete file until response is sent
+       background=None
 )
 
 

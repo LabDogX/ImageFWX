@@ -3,7 +3,7 @@ RQ Worker for processing ImageMagick jobs
 """
 
 import redis
-from rq import Worker, Queue, Connection
+from rq import Worker, Queue
 import sys
 import os
 
@@ -16,13 +16,9 @@ from app.core.config import settings
 def run_worker():
     """Start the RQ worker"""
     redis_conn = redis.from_url(settings.redis_url)
-    
-    with Connection(redis_conn):
-        worker = Worker(
-            queues=[Queue("imagemagick", connection=redis_conn)],
-            connection=redis_conn,
-        )
-        worker.work(with_scheduler=True)
+    queue = Queue("imagemagick", connection=redis_conn)
+    worker = Worker([queue], connection=redis_conn)
+    worker.work(with_scheduler=True)
 
 
 if __name__ == "__main__":
