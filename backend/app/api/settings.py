@@ -46,6 +46,7 @@ class UserSettingsResponse(BaseModel):
     delete_originals: bool
     auto_download: bool
     require_login: bool  # Read-only, from .env
+    allow_registration: bool  # Read-only, from .env
 
 
 @router.get("/", response_model=UserSettingsResponse)
@@ -67,6 +68,7 @@ async def get_settings(
         delete_originals=settings.get("delete_originals", DEFAULT_SETTINGS["delete_originals"]),
         auto_download=settings.get("auto_download", DEFAULT_SETTINGS["auto_download"]),
         require_login=app_settings.require_login,  # Always from config
+        allow_registration=app_settings.allow_registration,  # Always from config
     )
 
 
@@ -88,6 +90,7 @@ async def update_settings(
             delete_originals=request.delete_originals if request.delete_originals is not None else DEFAULT_SETTINGS["delete_originals"],
             auto_download=request.auto_download if request.auto_download is not None else DEFAULT_SETTINGS["auto_download"],
             require_login=app_settings.require_login,
+            allow_registration=app_settings.allow_registration,
         )
     
     # Get current settings
@@ -134,6 +137,7 @@ async def update_settings(
         delete_originals=settings.get("delete_originals", DEFAULT_SETTINGS["delete_originals"]),
         auto_download=settings.get("auto_download", DEFAULT_SETTINGS["auto_download"]),
         require_login=app_settings.require_login,
+        allow_registration=app_settings.allow_registration,
     )
 
 

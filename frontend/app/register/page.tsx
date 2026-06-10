@@ -1,16 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Eye, EyeOff, Loader2, Check, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, Loader2, Check, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { authApi } from '@/lib/api';
+import { authApi, settingsApi } from '@/lib/api';
 import { useStore } from '@/lib/store';
 
 export default function RegisterPage() {
@@ -23,6 +23,14 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  // null = still loading the flag, true/false = known
+  const [registrationAllowed, setRegistrationAllowed] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    settingsApi.get()
+      .then((s) => setRegistrationAllowed(s.allow_registration ?? true))
+      .catch(() => setRegistrationAllowed(true));
+  }, []);
 
   const passwordRequirements = [
     { text: 'At least 8 characters', met: password.length >= 8 },
@@ -71,6 +79,66 @@ export default function RegisterPage() {
       setIsLoading(false);
     }
   };
+
+  // While the flag loads, show a minimal spinner (avoids form flash before redirect)
+  if (registrationAllowed === null) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  // Registration disabled via ALLOW_REGISTRATION=false → block the form entirely
+  if (registrationAllowed === false) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-md"
+        >
+          {/* Back button */}
+          <Link href="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-8">
+            <ArrowLeft className="h-4 w-4" />
+            Back to home
+          </Link>
+
+          {/* Card */}
+          <div className="bg-card rounded-2xl border border-border p-8 text-center">
+            {/* Logo */}
+            <div className="flex items-center justify-center gap-3 mb-8">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl overflow-hidden">
+                <Image
+                  src="/logo.png"
+                  alt="ImageMagick WebGUI"
+                  width={40}
+                  height={40}
+                  className="object-contain"
+                  priority
+                />
+              </div>
+              <h1 className="font-semibold">ImageMagick WebGUI</h1>
+            </div>
+
+            <div className="flex justify-center mb-4">
+              <ShieldAlert className="h-10 w-10 text-amber-500" />
+            </div>
+
+            <h2 className="font-semibold mb-2">Registration disabled</h2>
+            <p className="text-sm text-muted-foreground mb-6">
+              New account registration is currently turned off. Please contact the
+              administrator if you need access.
+            </p>
+
+            <Button asChild className="w-full">
+              <Link href="/login">Back to sign in</Link>
+            </Button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">

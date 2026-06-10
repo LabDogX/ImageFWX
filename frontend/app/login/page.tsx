@@ -22,6 +22,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [requireLogin, setRequireLogin] = useState(false);
+  const [allowRegistration, setAllowRegistration] = useState(true);
   const [googleEnabled, setGoogleEnabled] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
@@ -31,6 +32,7 @@ export default function LoginPage() {
       try {
         const settings = await settingsApi.get();
         setRequireLogin(settings.require_login || false);
+        setAllowRegistration(settings.allow_registration ?? true);
       } catch (e) {
         // Ignore
       }
@@ -243,12 +245,14 @@ export default function LoginPage() {
           )}
 
           {/* Register link */}
-          <p className="mt-6 text-center text-sm text-muted-foreground">
-            Don&apos;t have an account?{' '}
-            <Link href="/register" className="text-primary hover:underline">
-              Create one
-            </Link>
-          </p>
+          {allowRegistration && (
+            <p className="mt-6 text-center text-sm text-muted-foreground">
+              Don&apos;t have an account?{' '}
+              <Link href="/register" className="text-primary hover:underline">
+                Create one
+              </Link>
+            </p>
+          )}
         </div>
 
         {/* Login required or anonymous usage note */}
