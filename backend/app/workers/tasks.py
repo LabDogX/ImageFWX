@@ -191,6 +191,7 @@ def process_background_removal(
     output_format: str = "png",
     alpha_matting: bool = False,
     user_id: Optional[int] = None,
+    model: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Remove background from images using AI (rembg)
@@ -203,6 +204,9 @@ def process_background_removal(
     }
     
     total = len(input_files)
+    
+    # Resolve model default from settings (e.g. isnet-general-use)
+    model = model or settings.rembg_model
     
     # Import AI service
     from app.services.ai_service import ai_service
@@ -232,7 +236,8 @@ def process_background_removal(
                     ai_service.remove_background(
                         input_path,
                         output_path,
-                        alpha_matting=alpha_matting
+                        model=model,
+                        alpha_matting=alpha_matting,
                     )
                 )
                 

@@ -120,7 +120,8 @@ ENV HOME=/home/appuser \
     U2NET_HOME=/home/appuser/.u2net
 
 # Pre-download rembg model (as root, then fix permissions)
-RUN python -c "from rembg import new_session; new_session('u2net')" || echo "Model download failed, will retry at runtime"
+# isnet-general-use: cleaner edges than u2net at comparable speed, used as default
+RUN python -c "from rembg import new_session; new_session('isnet-general-use')" || echo "Model download failed, will retry at runtime"
 RUN chown -R appuser:appuser /home/appuser/.u2net || true
 
 # Copy startup script

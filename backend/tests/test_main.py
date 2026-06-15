@@ -46,10 +46,12 @@ class TestImageMagickService:
         """Test filename sanitization"""
         from app.services.imagemagick import imagemagick_service
         
+        # Note: hyphens are intentionally preserved by sanitize_filename
+        # (regex [^\w\-_\.]); only shell-dangerous chars become underscores.
         test_cases = [
             ("normal.jpg", "normal.jpg"),
             ("../etc/passwd", "passwd"),
-            ("file;rm -rf.jpg", "file_rm__rf.jpg"),
+            ("file;rm -rf.jpg", "file_rm_-rf.jpg"),
             ("file with spaces.png", "file_with_spaces.png"),
         ]
         
@@ -61,20 +63,32 @@ class TestImageMagickService:
 class TestFileService:
     """Tests for file service"""
     
-    @pytest.mark.asyncio
-    async def test_generate_temp_path(self):
-        """Test temporary path generation"""
+    def test_get_output_path_unique(self):
+        """Output paths should be unique across calls"""
         from app.services.file_service import file_service
         
-        path1 = file_service.generate_temp_path("png")
-        path2 = file_service.generate_temp_path("png")
+        path1 = file_service.get_output_path("photo.jpg", "png")
+        path2 = file_service.get_output_path("photo.jpg", "png")
         
-        # Paths should be unique
+        # uuid suffix should make every path unique
         assert path1 != path2
+    
+    def test_get_output_path_extension(self):
+        """Output path should carry the requested format as extension"""
+        from app.services.file_service import file_service
         
-        # Should have correct extension
-        assert path1.endswith(".png")
-        assert path2.endswith(".png")
+        path = file_service.get_output_path("photo.jpg", "webp")
+        assert path.endswith(".webp")
+    
+    def test_get_output_path_user_segment(self):
+        """Output dir should reflect user_id, or 'anonymous' when absent"""
+        from app.services.file_service import file_service
+        
+        anon = file_service.get_output_path("photo.jpg", "png")
+        owned = file_service.get_output_path("photo.jpg", "png", user_id=42)
+        
+        assert "anonymous" in anon
+        assert "42" in owned.split("/")[-2]
 
 
 class TestSecurityFunctions:

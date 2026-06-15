@@ -39,6 +39,17 @@ class Settings(BaseSettings):
     imagemagick_memory_limit: str = "2GB"
     max_concurrent_jobs: int = 10
     
+    # AI / Background removal (rembg)
+    # Default model. isnet-general-use gives noticeably cleaner edges than u2net
+    # at comparable speed. Other options: u2net, u2net_human_seg, silueta.
+    rembg_model: str = "isnet-general-use"
+    # Images larger than this (longest side, px) are downscaled before inference
+    # for speed, then scaled back. Lower = faster on weak CPUs, higher = sharper.
+    rembg_max_size: int = 2048
+    # ONNX Runtime intra-op threads. 0 = use all available cores.
+    # Set to a low number (e.g. 2) on shared/weak VPS to limit CPU usage.
+    onnx_threads: int = 0
+    
     # Security
     rate_limit: str = "100/minute"
     require_login: bool = False  # If True, users must login to use the app
