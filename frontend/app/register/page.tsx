@@ -176,9 +176,11 @@ export default function RegisterPage() {
               <div className="text-sm">
                 <p className="font-medium text-amber-800 dark:text-amber-400">Important notice</p>
                 <p className="text-amber-700 dark:text-amber-500 mt-1">
-                  Images uploaded without an account are stored anonymously. After creating an account, 
-                  you will start with a clean gallery. Your anonymous images will remain accessible 
-                  only in an incognito/anonymous session.
+                  Images uploaded without an account are NOT private — on a server with
+                  open access they are visible to every other anonymous visitor. Create an
+                  account to keep your images tied to you. After registering you start with
+                  a clean gallery; images you uploaded anonymously stay in the shared
+                  anonymous pool.
                 </p>
               </div>
             </div>

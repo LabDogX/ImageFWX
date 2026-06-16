@@ -15,7 +15,7 @@ import io
 import mimetypes
 
 from app.core.database import get_db
-from app.core.security import get_current_user_optional
+from app.core.security import get_current_user_or_enforce
 from app.models.user import User
 from app.models.job import Job, JobStatus
 from app.models.image import Image
@@ -69,7 +69,7 @@ async def list_jobs(
     status: Optional[str] = None,
     limit: int = 50,
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional)
+    current_user: Optional[User] = Depends(get_current_user_or_enforce)
 ):
     """List user's jobs"""
     query = select(Job).order_by(Job.created_at.desc()).limit(limit)
@@ -147,7 +147,7 @@ async def list_jobs(
 async def get_job(
     job_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional)
+    current_user: Optional[User] = Depends(get_current_user_or_enforce)
 ):
     """Get job details"""
     query = select(Job).where(Job.job_id == job_id)
@@ -241,7 +241,7 @@ async def get_job(
 async def cancel_job(
     job_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional)
+    current_user: Optional[User] = Depends(get_current_user_or_enforce)
 ):
     """Cancel a pending job"""
     query = select(Job).where(Job.job_id == job_id)
@@ -273,7 +273,7 @@ async def cancel_job(
 async def download_job_results(
     job_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional)
+    current_user: Optional[User] = Depends(get_current_user_or_enforce)
 ):
     """Download job results - single file or ZIP for multiple files"""
     query = select(Job).where(Job.job_id == job_id)
@@ -341,7 +341,7 @@ async def download_single_file(
     job_id: str,
     index: int,
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional)
+    current_user: Optional[User] = Depends(get_current_user_or_enforce)
 ):
     """Download a single output file from job"""
     query = select(Job).where(Job.job_id == job_id)
@@ -371,7 +371,7 @@ async def download_single_file(
 async def delete_job(
     job_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional)
+    current_user: Optional[User] = Depends(get_current_user_or_enforce)
 ):
     """Delete job and its output files"""
     query = select(Job).where(Job.job_id == job_id)

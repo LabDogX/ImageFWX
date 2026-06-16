@@ -17,7 +17,7 @@ import zipfile
 import io
 import re
 from app.core.database import get_db
-from app.core.security import get_current_user, get_current_user_optional
+from app.core.security import get_current_user, get_current_user_or_enforce, get_current_user_optional, get_current_user_optional
 from app.core.config import settings
 from app.models.user import User
 from app.models.image import Image
@@ -92,7 +92,7 @@ class UploadResponse(BaseModel):
 async def upload_images(
     files: List[UploadFile] = File(...),
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional)
+    current_user: Optional[User] = Depends(get_current_user_or_enforce)
 ):
     """Upload multiple images"""
     user_id = current_user.id if current_user else None
@@ -172,7 +172,7 @@ async def list_images(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional)
+    current_user: Optional[User] = Depends(get_current_user_or_enforce)
 ):
     """List user's uploaded images"""
     query = select(Image).order_by(Image.created_at.desc()).offset(skip).limit(limit)
@@ -419,7 +419,7 @@ async def rename_image(
     image_id: int,
     request: RenameRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional)
+    current_user: Optional[User] = Depends(get_current_user_or_enforce)
 ):
     """Rename an image (change original_filename)"""
     query = select(Image).where(Image.id == image_id)
@@ -461,7 +461,7 @@ async def rename_image(
 async def get_image_info(
     image_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional)
+    current_user: Optional[User] = Depends(get_current_user_or_enforce)
 ):
     """Get detailed image metadata"""
     query = select(Image).where(Image.id == image_id)
@@ -491,7 +491,7 @@ async def get_image_info(
 async def delete_image(
     image_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional)
+    current_user: Optional[User] = Depends(get_current_user_or_enforce)
 ):
     """Delete an image"""
     query = select(Image).where(Image.id == image_id)
@@ -521,7 +521,7 @@ async def delete_image(
 async def download_images_as_zip(
     image_ids: List[int],
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional)
+    current_user: Optional[User] = Depends(get_current_user_or_enforce)
 ):
     """Download multiple images as ZIP"""
     query = select(Image).where(Image.id.in_(image_ids))
@@ -558,7 +558,7 @@ class MoveToProjectRequest(BaseModel):
 async def move_images_to_project(
     request: MoveToProjectRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional)
+    current_user: Optional[User] = Depends(get_current_user_or_enforce)
 ):
     """Move images to a project (or remove from project if project_id is None)"""
     if not request.image_ids:

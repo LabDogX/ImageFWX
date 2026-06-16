@@ -52,7 +52,7 @@ class Settings(BaseSettings):
     
     # Security
     rate_limit: str = "100/minute"
-    require_login: bool = False  # If True, users must login to use the app
+    require_login: bool = True  # If True, users must login to use the app
     allow_registration: bool = True  # If False, only admins can create users
     
     # Default processing settings

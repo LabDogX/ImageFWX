@@ -10,7 +10,7 @@ from sqlalchemy import select, func
 from datetime import datetime
 
 from app.core.database import get_db
-from app.core.security import get_current_user, get_current_user_optional
+from app.core.security import get_current_user, get_current_user_or_enforce
 from app.models.user import User
 from app.models.project import Project
 from app.models.image import Image
@@ -60,7 +60,7 @@ class MoveImagesRequest(BaseModel):
 @router.get("/", response_model=ProjectListResponse)
 async def list_projects(
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional)
+    current_user: Optional[User] = Depends(get_current_user_or_enforce)
 ):
     """List all projects for the current user"""
     if not current_user:

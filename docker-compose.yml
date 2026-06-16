@@ -18,7 +18,7 @@ services:
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - SECRET_KEY=${SECRET_KEY:-CHANGE_THIS_supersecretkey_production_abc123}
       - JWT_SECRET=${JWT_SECRET:-CHANGE_THIS_jwt_secret_production_xyz789}
-      - REQUIRE_LOGIN=${REQUIRE_LOGIN:-false}
+      - REQUIRE_LOGIN=${REQUIRE_LOGIN:-true}
       - ALLOW_REGISTRATION=${ALLOW_REGISTRATION:-true}
       - DEFAULT_OUTPUT_FORMAT=${DEFAULT_OUTPUT_FORMAT:-webp}
       - DEFAULT_QUALITY=${DEFAULT_QUALITY:-85}

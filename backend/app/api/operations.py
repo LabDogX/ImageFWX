@@ -13,7 +13,7 @@ from datetime import datetime
 import uuid
 
 from app.core.database import get_db
-from app.core.security import get_current_user_optional
+from app.core.security import get_current_user_or_enforce
 from app.core.config import settings
 from app.models.user import User
 from app.models.image import Image
@@ -141,7 +141,7 @@ async def _generate_thumbnail_background(output_path: str, thumb_path: str, size
 async def process_operation(
     request: ProcessRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional)
+    current_user: Optional[User] = Depends(get_current_user_or_enforce)
 ):
     """Process multiple images with specified operations"""
     user_id = current_user.id if current_user else None
@@ -207,7 +207,7 @@ async def process_operation(
 async def process_raw(
     request: RawCommandRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional)
+    current_user: Optional[User] = Depends(get_current_user_or_enforce)
 ):
     """Process images with raw ImageMagick command (terminal mode)"""
     user_id = current_user.id if current_user else None
@@ -426,7 +426,7 @@ class RemoveBackgroundRequest(BaseModel):
 async def live_preview(
     request: LivePreviewRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional)
+    current_user: Optional[User] = Depends(get_current_user_or_enforce)
 ):
     """
     Generate a live preview of operations applied to an image.
@@ -486,7 +486,7 @@ async def live_preview(
 async def remove_background(
     request: RemoveBackgroundRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional)
+    current_user: Optional[User] = Depends(get_current_user_or_enforce)
 ):
     """
     Remove background from images using AI (rembg).
@@ -556,7 +556,7 @@ class SingleRemoveBackgroundRequest(BaseModel):
 async def remove_background_single(
     request: SingleRemoveBackgroundRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional)
+    current_user: Optional[User] = Depends(get_current_user_or_enforce)
 ):
     """Remove background from a single image (for editor)"""
     user_id = current_user.id if current_user else None
@@ -607,7 +607,7 @@ async def remove_background_sync(
     request: SingleRemoveBackgroundRequest,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional)
+    current_user: Optional[User] = Depends(get_current_user_or_enforce)
 ):
     """
     Remove background synchronously and return new image URL.
@@ -713,7 +713,7 @@ async def upscale_image(
     request: UpscaleRequest,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional)
+    current_user: Optional[User] = Depends(get_current_user_or_enforce)
 ):
     """
     Upscale image resolution.
@@ -839,7 +839,7 @@ async def process_sync(
     request: ProcessSyncRequest,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional)
+    current_user: Optional[User] = Depends(get_current_user_or_enforce)
 ):
     """
     Process image synchronously and return URL to result.
@@ -987,7 +987,7 @@ class DownloadDirectRequest(BaseModel):
 async def download_direct(
     request: DownloadDirectRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional)
+    current_user: Optional[User] = Depends(get_current_user_or_enforce)
 ):
     """
     Process image and return file directly for download.

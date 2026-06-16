@@ -142,3 +142,43 @@ async def get_current_user_optional(
     except Exception as e:
         logger.error(f"Error in get_current_user_optional: {e}")
         return None
+
+async def get_current_user_or_enforce(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(
+        HTTPBearer(auto_error=False)
+    ),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Returns the current user.
+    - If REQUIRE_LOGIN is True: a valid token is mandatory; anonymous access is
+      rejected with 401 (this is the real, server-side enforcement).
+    - If REQUIRE_LOGIN is False: behaves like the optional dependency — returns
+      the user when a valid token is present, or None for anonymous access.
+    """
+    from app.models.user import User
+
+    user = None
+    if credentials is not None:
+        try:
+            payload = verify_token(credentials.credentials)
+            if payload is not None:
+                user_id = payload.get("sub")
+                if user_id is not None:
+                    result = await db.execute(
+                        select(User).where(User.id == int(user_id))
+                    )
+                    user = result.scalar_one_or_none()
+        except Exception as e:
+            logger.error(f"Error resolving user in get_current_user_or_enforce: {e}")
+            user = None
+
+    # Server-side enforcement of the login requirement.
+    if settings.require_login and user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return user
