@@ -38,22 +38,7 @@ import { useStore } from '@/lib/store';
 import { authApi } from '@/lib/api';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-
-// Password validation helper
-function validatePassword(password: string) {
-  return {
-    minLength: password.length >= 8,
-    hasLower: /[a-z]/.test(password),
-    hasUpper: /[A-Z]/.test(password),
-    hasDigit: /\d/.test(password),
-    hasSpecial: /[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/~`]/.test(password),
-  };
-}
-
-function isPasswordValid(password: string) {
-  const v = validatePassword(password);
-  return v.minLength && v.hasLower && v.hasUpper && v.hasDigit && v.hasSpecial;
-}
+import { validatePassword, isPasswordValid } from '@/lib/password';
 
 export function Header() {
   const { theme, setTheme } = useTheme();
@@ -69,6 +54,7 @@ export function Header() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [registrationEnabled, setRegistrationEnabled] = useState(true);
@@ -79,6 +65,7 @@ export function Header() {
   const selectedCount = selectedImageIds.length;
   const passwordChecks = validatePassword(password);
   const passwordValid = isPasswordValid(password);
+  const passwordsMatch = password === confirmPassword;
 
   // Mark as mounted (client-side only)
   useEffect(() => {
@@ -134,6 +121,12 @@ export function Header() {
       return;
     }
 
+    // Confirm passwords match on registration
+    if (!isLogin && password !== confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+
     setLoading(true);
     try {
       if (isLogin) {
@@ -150,6 +143,7 @@ export function Header() {
       setShowAuthDialog(false);
       setEmail('');
       setPassword('');
+      setConfirmPassword('');
       setName('');
     } catch (error: any) {
       const detail = error.response?.data?.detail;
@@ -319,7 +313,7 @@ export function Header() {
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleAuth()}
+                    onKeyDown={(e) => e.key === 'Enter' && isLogin && handleAuth()}
                   />
                   
                   {/* Password requirements - only show during registration */}
@@ -349,11 +343,29 @@ export function Header() {
                     </div>
                   )}
                 </div>
+
+                {/* Confirm password - only during registration */}
+                {!isLogin && (
+                  <div className="grid gap-2">
+                    <Label htmlFor="confirmPassword">Confirm Password</Label>
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      placeholder="••••••••"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleAuth()}
+                    />
+                    {confirmPassword.length > 0 && !passwordsMatch && (
+                      <p className="text-xs text-red-500">Passwords do not match</p>
+                    )}
+                  </div>
+                )}
               </div>
               <DialogFooter className="flex-col gap-3 sm:flex-col">
                 <Button 
                   onClick={handleAuth} 
-                  disabled={loading || (!isLogin && !passwordValid)}
+                  disabled={loading || (!isLogin && (!passwordValid || !passwordsMatch))}
                   className="w-full"
                 >
                   {loading ? 'Loading...' : isLogin ? 'Sign In' : 'Create Account'}
@@ -408,7 +420,10 @@ export function Header() {
                 {registrationEnabled ? (
                   <Button
                     variant="ghost"
-                    onClick={() => setIsLogin(!isLogin)}
+                    onClick={() => {
+                      setIsLogin(!isLogin);
+                      setConfirmPassword('');
+                    }}
                     className="w-full text-sm"
                   >
                     {isLogin 

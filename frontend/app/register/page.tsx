@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { authApi, settingsApi } from '@/lib/api';
 import { useStore } from '@/lib/store';
+import { isPasswordValid, passwordRequirementList } from '@/lib/password';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -32,12 +33,7 @@ export default function RegisterPage() {
       .catch(() => setRegistrationAllowed(true));
   }, []);
 
-  const passwordRequirements = [
-    { text: 'At least 8 characters', met: password.length >= 8 },
-    { text: 'Contains uppercase letter', met: /[A-Z]/.test(password) },
-    { text: 'Contains lowercase letter', met: /[a-z]/.test(password) },
-    { text: 'Contains number', met: /[0-9]/.test(password) },
-  ];
+  const passwordRequirements = passwordRequirementList(password);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,8 +48,8 @@ export default function RegisterPage() {
       return;
     }
     
-    if (password.length < 8) {
-      toast.error('Password must be at least 8 characters');
+    if (!isPasswordValid(password)) {
+      toast.error('Password does not meet all requirements');
       return;
     }
     

@@ -27,6 +27,7 @@ import {
 import { toast } from 'sonner';
 import { settingsApi, authApi } from '@/lib/api';
 import { useStore } from '@/lib/store';
+import { isPasswordValid } from '@/lib/password';
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
@@ -56,6 +57,7 @@ export default function SettingsPage() {
   // Create account state
   const [newEmail, setNewEmail] = useState('');
   const [newAccountPassword, setNewAccountPassword] = useState('');
+  const [newAccountConfirm, setNewAccountConfirm] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
@@ -120,8 +122,8 @@ export default function SettingsPage() {
       return;
     }
     
-    if (newPassword.length < 6) {
-      toast.error('Password must be at least 6 characters');
+    if (!isPasswordValid(newPassword)) {
+      toast.error('Password must be 8+ chars with upper, lower, digit and special character');
       return;
     }
     
@@ -143,8 +145,13 @@ export default function SettingsPage() {
       return;
     }
     
-    if (newAccountPassword.length < 6) {
-      toast.error('Password must be at least 6 characters');
+    if (newAccountPassword !== newAccountConfirm) {
+      toast.error('Passwords do not match');
+      return;
+    }
+    
+    if (!isPasswordValid(newAccountPassword)) {
+      toast.error('Password must be 8+ chars with upper, lower, digit and special character');
       return;
     }
     
@@ -154,6 +161,7 @@ export default function SettingsPage() {
       setShowCreateAccount(false);
       setNewEmail('');
       setNewAccountPassword('');
+      setNewAccountConfirm('');
       setIsAdmin(false);
     } catch (error: any) {
       toast.error(error.message || 'Failed to create account');
@@ -462,7 +470,7 @@ export default function SettingsPage() {
                 type={showPasswords ? "text" : "password"}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Enter new password"
+                placeholder="8+ chars, upper, lower, digit, special"
               />
             </div>
             <div className="space-y-2">
@@ -473,6 +481,9 @@ export default function SettingsPage() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Confirm new password"
               />
+              {confirmPassword.length > 0 && newPassword !== confirmPassword && (
+                <p className="text-xs text-red-500">Passwords do not match</p>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <Switch checked={showPasswords} onCheckedChange={setShowPasswords} />
@@ -508,8 +519,20 @@ export default function SettingsPage() {
                 type="password"
                 value={newAccountPassword}
                 onChange={(e) => setNewAccountPassword(e.target.value)}
-                placeholder="Minimum 6 characters"
+                placeholder="8+ chars, upper, lower, digit, special"
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Confirm Password</Label>
+              <Input
+                type="password"
+                value={newAccountConfirm}
+                onChange={(e) => setNewAccountConfirm(e.target.value)}
+                placeholder="Confirm password"
+              />
+              {newAccountConfirm.length > 0 && newAccountPassword !== newAccountConfirm && (
+                <p className="text-xs text-red-500">Passwords do not match</p>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <Switch checked={isAdmin} onCheckedChange={setIsAdmin} />

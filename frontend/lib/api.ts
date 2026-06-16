@@ -84,6 +84,23 @@ export const authApi = {
     return data;
   },
   
+  changePassword: async (currentPassword: string, newPassword: string) => {
+    const { data } = await api.post('/api/auth/change-password', {
+      current_password: currentPassword,
+      new_password: newPassword,
+    });
+    return data;
+  },
+  
+  createUser: async (email: string, password: string, isAdmin: boolean) => {
+    const { data } = await api.post('/api/auth/create-user', {
+      email,
+      password,
+      is_admin: isAdmin,
+    });
+    return data;
+  },
+  
   logout: () => {
     localStorage.removeItem('token');
   },
