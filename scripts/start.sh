@@ -36,6 +36,8 @@ sleep 3
 # Start Next.js frontend (standalone mode)
 echo "🎨 Starting Next.js frontend on port 3000..."
 cd /app/frontend/.next/standalone
+export HOSTNAME=0.0.0.0
+export PORT=3000
 node server.js &
 FRONTEND_PID=$!
 
