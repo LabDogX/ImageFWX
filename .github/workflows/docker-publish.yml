@@ -33,8 +33,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata
-        id: meta
+      # ---- CPU image (default, lightweight) ----
+      # Tags: latest, X.Y.Z, X.Y  -> what users without a GPU pull.
+      - name: Extract metadata (CPU)
+        id: meta_cpu
         uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
@@ -43,12 +45,43 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Build and push Docker image
+      - name: Build and push CPU image
         uses: docker/build-push-action@v7
         with:
           context: .
+          file: ./Dockerfile
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tags: ${{ steps.meta_cpu.outputs.tags }}
+          labels: ${{ steps.meta_cpu.outputs.labels }}
+          cache-from: type=gha,scope=cpu
+          cache-to: type=gha,mode=max,scope=cpu
+
+      # ---- GPU image (CUDA + cuDNN, large) ----
+      # Tags: latest-gpu, X.Y.Z-gpu, X.Y-gpu  -> opt-in only. Never pulled by
+      # default, so non-GPU users don't download the multi-GB CUDA image.
+      # NOTE: the "-gpu" suffix on semver tags comes from flavor.suffix. The
+      # "latest-gpu" tag is declared explicitly via type=raw, because flavor's
+      # onlatest does NOT apply to an explicit type=raw,value=latest tag.
+      - name: Extract metadata (GPU)
+        id: meta_gpu
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          flavor: |
+            latest=false
+            suffix=-gpu
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest-gpu,enable={{is_default_branch}},suffix=
+
+      - name: Build and push GPU image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile.gpu
+          push: true
+          tags: ${{ steps.meta_gpu.outputs.tags }}
+          labels: ${{ steps.meta_gpu.outputs.labels }}
+          cache-from: type=gha,scope=gpu
+          cache-to: type=gha,mode=max,scope=gpu
