@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { 
   ArrowLeft, 
@@ -303,7 +303,7 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string | null>(null);
 
-  const loadJobs = async () => {
+  const loadJobs = useCallback(async () => {
     setLoading(true);
     try {
       const data = await queueApi.listJobs(filter || undefined, 100);
@@ -313,11 +313,11 @@ export default function HistoryPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filter]);
 
   useEffect(() => {
     loadJobs();
-  }, [filter]);
+  }, [loadJobs]);
 
   useEffect(() => {
     const hasActiveJobs = jobs.some(j => j.status === 'pending' || j.status === 'processing');
@@ -325,7 +325,7 @@ export default function HistoryPage() {
 
     const interval = setInterval(loadJobs, 2000);
     return () => clearInterval(interval);
-  }, [jobs]);
+  }, [jobs, loadJobs]);
 
   const handleDelete = async (jobId: string) => {
     try {

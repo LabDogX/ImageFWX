@@ -1,7 +1,7 @@
 # ============================================
 # STAGE 1: Frontend Builder
 # ============================================
-FROM node:26-alpine AS frontend-builder
+FROM node:22-alpine AS frontend-builder
 
 WORKDIR /app/frontend
 
@@ -9,8 +9,8 @@ ARG NEXT_PUBLIC_API_PORT=8000
 ENV NEXT_PUBLIC_API_PORT=${NEXT_PUBLIC_API_PORT}
 
 # Install dependencies
-COPY frontend/package.json ./
-RUN npm install --legacy-peer-deps
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci --legacy-peer-deps
 
 # Copy source and build
 COPY frontend/ ./
@@ -67,6 +67,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libmagickwand-dev \
     ghostscript \
     poppler-utils \
+    fonts-dejavu-core \
     libpq5 \
     libmagic1 \
     curl \
@@ -75,7 +76,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gnupg \
     && mkdir -p /etc/apt/keyrings \
     && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
-    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list \
+    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_22.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list \
     && apt-get update \
     && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/* \
@@ -109,7 +110,8 @@ COPY --from=frontend-builder /app/frontend/public ./frontend/.next/standalone/pu
 COPY backend/ ./backend/
 
 # Create non-root user with home directory
-RUN groupadd -r appuser && useradd -r -g appuser -m -d /home/appuser appuser
+# Keep a documented, stable UID/GID so NAS bind-mount ACLs are predictable.
+RUN groupadd -g 10001 appuser && useradd -u 10001 -g appuser -m -d /home/appuser appuser
 
 # Create directories with proper permissions
 RUN mkdir -p /app/uploads /app/processed /tmp/imagemagick /tmp/numba_cache /tmp/matplotlib /home/appuser/.u2net && \

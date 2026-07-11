@@ -4,16 +4,49 @@
 
 # ImageMagick WebGUI
 
+> English README (repository homepage). [中文说明](README.zh-CN.md) · Keep both README files synchronized when changing user-facing features or deployment instructions.
+
+## Frames and NAS photos
+
+ImageFWX adds an original border editor with Classic White, Thin Black, Polaroid,
+Double Gallery, Square Matte, and Portrait Matte parameter presets. Borders are
+rendered by the backend ImageMagick pipeline for both preview and export; no
+external frame code or assets are included.
+
+Additional original presets provide warm, graphite, wide, story, floating-paper,
+and double-dark treatments. Text watermarks support built-in font choices and
+custom text/shadow colors. Uploaded PNG, JPEG, WebP, and SVG library images can
+also be used as safely resolved logo/image watermarks.
+
+The NAS browser is disabled by default. Enable it only with a read-only source
+mount and a separate writable output mount:
+
+```yaml
+volumes:
+  - "/vol1/1000/照片:/mnt/photos:ro"
+  - "/vol1/1000/照片处理结果:/app/processed"
+environment:
+  - NAS_BROWSER_ENABLED=true
+  - NAS_SOURCE_DIR=/mnt/photos
+  - NAS_MAX_IMPORT_FILES=100
+  - REQUIRE_LOGIN=true
+  - ALLOW_REGISTRATION=false
+```
+
+NAS files are copied into `/app/uploads` before processing; original photos are
+never renamed, modified, or thumbnail-generated in the NAS source. Do not point
+`/app/processed` at the original-photo directory. The project retains the
+upstream MIT License and copyright notices.
+
 <br/>
 </div>
 
 <div align="center">
 
-[![Stars](https://img.shields.io/github/stars/PrzemekSkw/imagemagick-webui?style=for-the-badge)](https://github.com/PrzemekSkw/imagemagick-webui/stargazers)
-[![Forks](https://img.shields.io/github/forks/PrzemekSkw/imagemagick-webui?style=for-the-badge)](https://github.com/PrzemekSkw/imagemagick-webui/network/members)
-[![Issues](https://img.shields.io/github/issues/PrzemekSkw/imagemagick-webui?style=for-the-badge)](https://github.com/PrzemekSkw/imagemagick-webui/issues)
-[![License](https://img.shields.io/github/license/PrzemekSkw/imagemagick-webui?style=for-the-badge)](https://github.com/PrzemekSkw/imagemagick-webui/blob/main/LICENSE)
-[![Docker Pulls](https://img.shields.io/docker/pulls/przemekskw/imagemagick-webui?style=for-the-badge)](https://hub.docker.com/r/przemekskw/imagemagick-webui)
+[![Stars](https://img.shields.io/github/stars/LabDogX/ImageFWX?style=for-the-badge)](https://github.com/LabDogX/ImageFWX/stargazers)
+[![Forks](https://img.shields.io/github/forks/LabDogX/ImageFWX?style=for-the-badge)](https://github.com/LabDogX/ImageFWX/network/members)
+[![Issues](https://img.shields.io/github/issues/LabDogX/ImageFWX?style=for-the-badge)](https://github.com/LabDogX/ImageFWX/issues)
+[![License](https://img.shields.io/github/license/LabDogX/ImageFWX?style=for-the-badge)](https://github.com/LabDogX/ImageFWX/blob/main/LICENSE)
 
 **A modern, beautiful web interface for ImageMagick with AI-powered features**
 
@@ -64,13 +97,14 @@ https://github.com/user-attachments/assets/53538ac9-8642-4c9b-972f-772c17efa9fa
 
 ## 🚀 Quick Start
 ```bash
-mkdir imagemagick-webgui && cd imagemagick-webgui
-curl -O https://raw.githubusercontent.com/PrzemekSkw/imagemagick-webui/main/docker-compose.example.yml
-mv docker-compose.example.yml docker-compose.yml
-docker compose up -d
+git clone https://github.com/LabDogX/ImageFWX.git
+cd ImageFWX
+cp .env.example .env
+# Fill SECRET_KEY, JWT_SECRET, POSTGRES_PASSWORD, and ALLOWED_ORIGINS in .env.
+docker compose up -d --build
 ```
 
-**Access:** http://localhost:3000
+**Access:** http://localhost:3012
 
 > 📖 **Need custom ports, authentication, or reverse proxy?** See [Installation Guide](docs/wiki/Installation.md)
 
@@ -82,16 +116,16 @@ docker compose up -d
 
 | Service | Port | Description |
 |---------|------|-------------|
-| Frontend | 3000 | Next.js web interface |
-| Backend | 8000 | FastAPI REST API |
+| Frontend | 3012 | Next.js web interface |
+| Backend | 8012 | FastAPI REST API |
 | PostgreSQL | 5432 | Database (internal) |
 | Redis | 6379 | Queue system (internal) |
 
 ### API Documentation
 
 Once running, access the interactive API docs:
-- **Swagger UI:** [http://localhost:8000/docs](http://localhost:8000/docs)
-- **ReDoc:** [http://localhost:8000/redoc](http://localhost:8000/redoc)
+- **Swagger UI:** [http://localhost:8012/docs](http://localhost:8012/docs)
+- **ReDoc:** [http://localhost:8012/redoc](http://localhost:8012/redoc)
 
 ### Architecture
 ```

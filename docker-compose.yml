@@ -13,13 +13,13 @@ services:
     environment:
       - NODE_ENV=production
       - NEXT_PUBLIC_API_PORT=${NEXT_PUBLIC_API_PORT:-8000}
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
-      - DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg://imagemagick:imagemagick@postgres:5432/imagemagick}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:?Set ALLOWED_ORIGINS in .env}
+      - DATABASE_URL=postgresql+asyncpg://imagemagick:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/imagemagick
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
-      - SECRET_KEY=${SECRET_KEY:-CHANGE_THIS_supersecretkey_production_abc123}
-      - JWT_SECRET=${JWT_SECRET:-CHANGE_THIS_jwt_secret_production_xyz789}
+      - SECRET_KEY=${SECRET_KEY:?Set SECRET_KEY in .env}
+      - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in .env}
       - REQUIRE_LOGIN=${REQUIRE_LOGIN:-true}
-      - ALLOW_REGISTRATION=${ALLOW_REGISTRATION:-true}
+      - ALLOW_REGISTRATION=${ALLOW_REGISTRATION:-false}
       - DEFAULT_OUTPUT_FORMAT=${DEFAULT_OUTPUT_FORMAT:-webp}
       - DEFAULT_QUALITY=${DEFAULT_QUALITY:-85}
       - MAX_UPLOAD_SIZE_MB=${MAX_UPLOAD_SIZE_MB:-100}
@@ -28,6 +28,9 @@ services:
       - HISTORY_RETENTION_HOURS=${HISTORY_RETENTION_HOURS:-24}
       - REMBG_MODEL=${REMBG_MODEL:-isnet-general-use}
       - ONNX_THREADS=${ONNX_THREADS:-0}
+      - NAS_BROWSER_ENABLED=${NAS_BROWSER_ENABLED:-false}
+      - NAS_SOURCE_DIR=${NAS_SOURCE_DIR:-/mnt/photos}
+      - NAS_MAX_IMPORT_FILES=${NAS_MAX_IMPORT_FILES:-100}
       - TZ=${TZ:-UTC}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
@@ -73,13 +76,13 @@ services:
     environment:
       - NODE_ENV=production
       - NEXT_PUBLIC_API_PORT=${NEXT_PUBLIC_API_PORT:-8000}
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
-      - DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg://imagemagick:imagemagick@postgres:5432/imagemagick}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:?Set ALLOWED_ORIGINS in .env}
+      - DATABASE_URL=postgresql+asyncpg://imagemagick:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/imagemagick
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
-      - SECRET_KEY=${SECRET_KEY:-CHANGE_THIS_supersecretkey_production_abc123}
-      - JWT_SECRET=${JWT_SECRET:-CHANGE_THIS_jwt_secret_production_xyz789}
+      - SECRET_KEY=${SECRET_KEY:?Set SECRET_KEY in .env}
+      - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in .env}
       - REQUIRE_LOGIN=${REQUIRE_LOGIN:-true}
-      - ALLOW_REGISTRATION=${ALLOW_REGISTRATION:-true}
+      - ALLOW_REGISTRATION=${ALLOW_REGISTRATION:-false}
       - DEFAULT_OUTPUT_FORMAT=${DEFAULT_OUTPUT_FORMAT:-webp}
       - DEFAULT_QUALITY=${DEFAULT_QUALITY:-85}
       - MAX_UPLOAD_SIZE_MB=${MAX_UPLOAD_SIZE_MB:-100}
@@ -88,6 +91,9 @@ services:
       - HISTORY_RETENTION_HOURS=${HISTORY_RETENTION_HOURS:-24}
       - REMBG_MODEL=${REMBG_MODEL:-isnet-general-use}
       - ONNX_THREADS=${ONNX_THREADS:-0}
+      - NAS_BROWSER_ENABLED=${NAS_BROWSER_ENABLED:-false}
+      - NAS_SOURCE_DIR=${NAS_SOURCE_DIR:-/mnt/photos}
+      - NAS_MAX_IMPORT_FILES=${NAS_MAX_IMPORT_FILES:-100}
       - TZ=${TZ:-UTC}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
@@ -124,7 +130,7 @@ services:
     image: postgres:16-alpine
     environment:
       - POSTGRES_USER=imagemagick
-      - POSTGRES_PASSWORD=imagemagick
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       - POSTGRES_DB=imagemagick
     volumes:
       - postgres_data:/var/lib/postgresql/data

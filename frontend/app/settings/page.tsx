@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Save, RotateCcw, Moon, Sun, Monitor, User, Lock, UserPlus, Shield, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
@@ -60,12 +60,7 @@ export default function SettingsPage() {
   const [newAccountConfirm, setNewAccountConfirm] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-    loadSettings();
-  }, []);
-
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async () => {
     try {
       const settings = await settingsApi.get();
       if (settings) {
@@ -84,7 +79,12 @@ export default function SettingsPage() {
       // Settings might not be available if not logged in
       console.log('Could not load settings');
     }
-  };
+  }, [setOutputFormat, setQuality]);
+
+  useEffect(() => {
+    setMounted(true);
+    loadSettings();
+  }, [loadSettings]);
 
   const saveSettings = async () => {
     try {

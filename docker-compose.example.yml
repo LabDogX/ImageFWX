@@ -13,27 +13,32 @@
 
 services:
   app:
-    image: ghcr.io/przemekskw/imagemagick-webui:latest
+    # Build ImageFWX; the upstream image does not contain this fork's features.
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
     - "3000:3000"  # Frontend - change to "3012:3000" for custom port
     - "8000:8000"  # Backend - change to "8012:8000" for custom port
+    env_file:
+      - .env
     environment:
       - NODE_ENV=production
       # Auto-detected! Only change if using reverse proxy with custom routing
       - NEXT_PUBLIC_API_PORT=8000  # ← CHANGE HERE to match backend HOST_PORT above
-      - ALLOWED_ORIGINS=*
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:?Set ALLOWED_ORIGINS in .env}
       
       # Database (internal - don't change)
-      - DATABASE_URL=postgresql+asyncpg://imagemagick:imagemagick@postgres:5432/imagemagick
+      - DATABASE_URL=postgresql+asyncpg://imagemagick:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/imagemagick
       - REDIS_URL=redis://redis:6379/0
       
       # Security (CHANGE IN PRODUCTION!)
-      - SECRET_KEY=CHANGE_THIS_supersecretkey_production_abc123
-      - JWT_SECRET=CHANGE_THIS_jwt_secret_production_xyz789
+      - SECRET_KEY=${SECRET_KEY:?Set SECRET_KEY in .env}
+      - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in .env}
       
       # Authentication
-      - REQUIRE_LOGIN=false  # Set to true to require login
-      - ALLOW_REGISTRATION=true  # Set to false to disable new signups
+      - REQUIRE_LOGIN=true
+      - ALLOW_REGISTRATION=false
       
       # Image Processing
       - DEFAULT_OUTPUT_FORMAT=webp
@@ -44,6 +49,11 @@ services:
       
       # History
       - HISTORY_RETENTION_HOURS=24
+      # Read-only NAS browser. Set REQUIRE_LOGIN=true and ALLOW_REGISTRATION=false
+      # when exposing this service through an external reverse proxy.
+      - NAS_BROWSER_ENABLED=false
+      - NAS_SOURCE_DIR=/mnt/photos
+      - NAS_MAX_IMPORT_FILES=100
       
       # Timezone
       - TZ=UTC
@@ -56,6 +66,11 @@ services:
       - uploads:/app/uploads
       - processed:/app/processed
       - temp:/tmp/imagemagick
+      # Feiniu example (quote Chinese host paths). Source must stay read-only:
+      # - "/vol1/1000/Docker/imagemagick-webui/uploads:/app/uploads"
+      # - "/vol1/1000/照片处理结果:/app/processed"
+      # - "/vol1/1000/Docker/imagemagick-webui/temp:/tmp/imagemagick"
+      # - "/vol1/1000/照片:/mnt/photos:ro"
     depends_on:
       postgres:
         condition: service_healthy
@@ -77,7 +92,7 @@ services:
     image: postgres:16-alpine
     environment:
       - POSTGRES_USER=imagemagick
-      - POSTGRES_PASSWORD=imagemagick
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       - POSTGRES_DB=imagemagick
     volumes:
       - postgres_data:/var/lib/postgresql/data

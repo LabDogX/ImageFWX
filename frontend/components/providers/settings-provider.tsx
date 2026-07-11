@@ -49,7 +49,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     };
 
     loadSettings();
-  }, [setOutputFormat, setQuality]);
+  }, [setOutputFormat, setQuality, isPublicPath, token]);
 
   // Check login requirement after settings are loaded
   useEffect(() => {

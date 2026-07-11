@@ -1,0 +1,13 @@
+# Apply with: docker compose -f docker-compose.yml -f docker-compose.nas.example.yml up -d --build
+# Copy this file to docker-compose.nas.yml and set the host paths for your NAS.
+services:
+  app:
+    volumes:
+      - "/vol1/1000/Docker/imagemagick-webui/uploads:/app/uploads"
+      - "/vol1/1000/照片处理结果:/app/processed"
+      - "/vol1/1000/Docker/imagemagick-webui/temp:/tmp/imagemagick"
+      - "/vol1/1000/照片:/mnt/photos:ro"
+    environment:
+      NAS_BROWSER_ENABLED: "true"
+      NAS_SOURCE_DIR: /mnt/photos
+      NAS_MAX_IMPORT_FILES: "100"

@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Added an original ImageMagick border operation with independent sides, short-edge percentages, double borders, matte ratios, and backend previews.
+- Added optional read-only NAS browsing and safe copy-based imports to the existing image library.
+- Added text color, font-family selection, and uploaded PNG/JPEG/WebP/SVG image watermarks with safe image-ID resolution.
+- Added original Warm Ivory, Graphite Gallery, Wide Matte, Story Matte, Floating Paper, and Double Onyx frame presets.
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),

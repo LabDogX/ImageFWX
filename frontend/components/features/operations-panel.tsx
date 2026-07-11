@@ -51,13 +51,6 @@ export function OperationsPanel() {
     );
   };
 
-  // Get first selected image for aspect ratio calculation
-  const getFirstSelectedImage = () => {
-    const validIds = getValidSelectedIds();
-    if (validIds.length === 0) return null;
-    return images.find(img => img.id === validIds[0]);
-  };
-
   const displaySelectedCount = selectedImageIds.filter(id => 
     images.some(img => img.id === id)
   ).length;
@@ -96,7 +89,8 @@ export function OperationsPanel() {
 
   // Update aspect ratio when selection changes
   useEffect(() => {
-    const img = getFirstSelectedImage();
+    const firstSelectedId = getValidSelectedIds()[0];
+    const img = firstSelectedId ? images.find(image => image.id === firstSelectedId) : null;
     if (img && img.width && img.height) {
       const ratio = img.width / img.height;
       setAspectRatio(ratio);

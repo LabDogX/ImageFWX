@@ -7,12 +7,103 @@ import re
 import shlex
 import asyncio
 import subprocess
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional, Tuple, Literal
 from pathlib import Path
 import uuid
 from datetime import datetime
 
 from app.core.config import settings
+
+
+HEX_COLOR_RE = re.compile(r"^#(?:[0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$")
+TARGET_RATIOS = {
+    "original": None, "1:1": (1, 1), "4:5": (4, 5), "3:2": (3, 2),
+    "2:3": (2, 3), "16:9": (16, 9), "9:16": (9, 16),
+}
+
+
+def validate_hex_color(value: str) -> bool:
+    """Return True only for the supported, shell-safe hexadecimal colors."""
+    return isinstance(value, str) and bool(HEX_COLOR_RE.fullmatch(value))
+
+
+def hex_to_rgba(value: str, opacity: float) -> str:
+    """Convert a validated hex color to an ImageMagick rgba() fill."""
+    hex_value = value.lstrip("#")
+    if len(hex_value) == 3:
+        hex_value = "".join(character * 2 for character in hex_value)
+    alpha = int(hex_value[6:8], 16) / 255 if len(hex_value) == 8 else 1.0
+    return f"rgba({int(hex_value[0:2], 16)},{int(hex_value[2:4], 16)},{int(hex_value[4:6], 16)},{opacity * alpha:.3f})"
+
+
+def percentage_to_pixels(short_edge: int, percentage: float) -> int:
+    """Convert a short-edge percentage using the product specification rounding."""
+    return round(short_edge * percentage / 100)
+
+
+def calculate_border_pixels(width: int, height: int, params: Dict) -> Dict[str, int]:
+    """Pure per-image border calculation; never reuses another image's dimensions."""
+    short_edge = min(width, height)
+    unit = params["unit"]
+    convert = (lambda n: percentage_to_pixels(short_edge, n)) if unit == "percent" else (lambda n: int(n))
+    return {side: convert(params[side]) for side in ("top", "right", "bottom", "left")}
+
+
+def parse_target_ratio(value: str) -> Optional[Tuple[int, int]]:
+    if value not in TARGET_RATIOS:
+        raise ValueError("Unsupported target ratio")
+    return TARGET_RATIOS[value]
+
+
+def calculate_target_canvas(width: int, height: int, target_ratio: str) -> Tuple[int, int]:
+    """Return a canvas that contains the image without cropping or scaling."""
+    ratio = parse_target_ratio(target_ratio)
+    if ratio is None:
+        return width, height
+    rw, rh = ratio
+    if width * rh > height * rw:
+        return width, round(width * rh / rw)
+    return round(height * rw / rh), height
+
+
+def build_border_arguments(width: int, height: int, params: Dict) -> Tuple[List[str], Tuple[int, int]]:
+    """Build ImageMagick arguments for a validated border operation.
+
+    `-extent` is used with NorthWest gravity and explicit offsets so asymmetric
+    sides are deterministic.  All values arrive from validated Pydantic data.
+    """
+    outer = calculate_border_pixels(width, height, params)
+    args: List[str] = []
+    current_w, current_h = width, height
+    if params["mode"] == "double" and params["inner_size"]:
+        inner = percentage_to_pixels(min(width, height), params["inner_size"]) if params["inner_unit"] == "percent" else int(params["inner_size"])
+        args += [f"-bordercolor {shlex.quote(params['inner_color'])}", f"-border {inner}x{inner}", "+repage"]
+        current_w += inner * 2
+        current_h += inner * 2
+
+    framed_w = current_w + outer["left"] + outer["right"]
+    framed_h = current_h + outer["top"] + outer["bottom"]
+    args += ["-gravity NorthWest", f"-background {shlex.quote(params['color'])}",
+             f"-extent {framed_w}x{framed_h}+{outer['left']}+{outer['top']}", "+repage"]
+    current_w, current_h = framed_w, framed_h
+
+    if params["mode"] == "matte" and params["target_ratio"] != "original":
+        target_w, target_h = calculate_target_canvas(current_w, current_h, params["target_ratio"])
+        gravity = {
+            ("left", "top"): "NorthWest", ("center", "top"): "North", ("right", "top"): "NorthEast",
+            ("left", "center"): "West", ("center", "center"): "Center", ("right", "center"): "East",
+            ("left", "bottom"): "SouthWest", ("center", "bottom"): "South", ("right", "bottom"): "SouthEast",
+        }[(params["horizontal_alignment"], params["vertical_alignment"])]
+        args += [f"-gravity {gravity}", f"-background {shlex.quote(params['color'])}", f"-extent {target_w}x{target_h}", "+repage"]
+        current_w, current_h = target_w, target_h
+    if params.get("shadow_enabled"):
+        shadow = shlex.quote(params["shadow_color"])
+        opacity = round(float(params["shadow_opacity"]) * 100)
+        blur = int(params["shadow_blur"])
+        offset_x, offset_y = int(params["shadow_offset_x"]), int(params["shadow_offset_y"])
+        args += ["\\(", "+clone", f"-background {shadow}", f"-shadow {opacity}x{blur}+{offset_x}+{offset_y}", "\\)",
+                 "+swap", f"-background {shlex.quote(params['color'])}", "-layers merge", "+repage"]
+    return args, (current_w, current_h)
 
 
 class ImageMagickError(Exception):
@@ -37,7 +128,7 @@ class ImageMagickService:
         "colorize", "tint", "gamma", "level", "auto-level", "normalize",
         "enhance", "auto-orient", "auto-gamma",
         # Watermark and overlay
-        "composite", "annotate", "watermark", "draw", "font", "pointsize", "fill", "gravity",
+        "composite", "annotate", "watermark", "image-watermark", "draw", "font", "pointsize", "fill", "gravity",
         # Geometry
         "extent", "trim", "shave", "border", "frame",
         # Color adjustments
@@ -173,11 +264,12 @@ class ImageMagickService:
         
         # Process operations
         # Get image dimensions for scaling
-        img_width = None
+        img_width = img_height = None
         try:
             from PIL import Image as PILImage
             with PILImage.open(input_path) as pil_img:
                 img_width = pil_img.width
+                img_height = pil_img.height
         except:
             pass
 
@@ -201,9 +293,17 @@ class ImageMagickService:
                     elif mode == "fill":
                         geometry += "^"
                     cmd_parts.append(f"-resize {geometry}")
+                    if img_width and img_height:
+                        if mode == "force":
+                            img_width, img_height = width, height
+                        else:
+                            scale = max(width / img_width, height / img_height) if mode == "fill" else min(width / img_width, height / img_height)
+                            img_width, img_height = round(img_width * scale), round(img_height * scale)
                 elif params.get("percent"):
                     pct = int(params["percent"])
                     cmd_parts.append(f"-resize {pct}%")
+                    if img_width and img_height:
+                        img_width, img_height = round(img_width * pct / 100), round(img_height * pct / 100)
             
             elif op_name == "crop":
                 width = int(params.get("width", 0))
@@ -212,6 +312,7 @@ class ImageMagickService:
                 y = int(params.get("y", 0))
                 if width > 0 and height > 0:
                     cmd_parts.append(f"-crop {width}x{height}+{x}+{y} +repage")
+                    img_width, img_height = width, height
             
             elif op_name == "crop_aspect":
                 aspect_w = int(params.get("aspect_w", 1))
@@ -223,6 +324,8 @@ class ImageMagickService:
             elif op_name == "rotate":
                 angle = float(params.get("angle", 0))
                 cmd_parts.append(f"-rotate {angle}")
+                if img_width and img_height and int(angle) % 180:
+                    img_width, img_height = img_height, img_width
             
             elif op_name == "flip":
                 cmd_parts.append("-flip")
@@ -300,8 +403,10 @@ class ImageMagickService:
                     position = params.get("position", "southeast").lower()
                     font_size_base = int(params.get("font_size", 24))
                     font_size = max(font_size_base, int(font_size_base * (img_width / 800))) if img_width else font_size_base
-                    color = params.get("color", "white")
+                    color = params.get("color", "#FFFFFF")
+                    shadow_color = params.get("shadow_color", "#000000")
                     opacity = float(params.get("opacity", 0.5))
+                    font_name = {"sans": "DejaVu-Sans", "serif": "DejaVu-Serif", "mono": "DejaVu-Sans-Mono"}.get(params.get("font", "sans"), "DejaVu-Sans")
                     
                     gravity_map = {
                         "northwest": "NorthWest",
@@ -320,11 +425,31 @@ class ImageMagickService:
                     text_offset = max(10, int(font_size * 0.4))
                     
                     cmd_parts.append(f"-gravity {gravity}")
+                    cmd_parts.append(f"-font {shlex.quote(font_name)}")
                     cmd_parts.append(f"-pointsize {font_size}")
-                    cmd_parts.append(f"-fill 'rgba(0,0,0,{opacity})'")
+                    cmd_parts.append(f"-fill {shlex.quote(hex_to_rgba(shadow_color, opacity))}")
                     cmd_parts.append(f"-annotate +{text_offset + shadow_offset}+{text_offset + shadow_offset} {shlex.quote(text)}")
-                    cmd_parts.append(f"-fill 'rgba(255,255,255,{opacity})'")
+                    cmd_parts.append(f"-fill {shlex.quote(hex_to_rgba(color, opacity))}")
                     cmd_parts.append(f"-annotate +{text_offset}+{text_offset} {shlex.quote(text)}")
+
+            elif op_name == "image-watermark":
+                watermark_path = params.get("image_path")
+                if not watermark_path or not Path(watermark_path).is_file():
+                    raise ImageMagickError("Image watermark is unavailable")
+                if img_width is None or img_height is None:
+                    raise ImageMagickError("Image watermark requires readable image dimensions")
+                scale = float(params.get("scale", 20))
+                opacity = float(params.get("opacity", 1))
+                target_width = max(1, round(min(img_width, img_height) * scale / 100))
+                position = params.get("position", "southeast").lower()
+                gravity = {
+                    "northwest": "NorthWest", "north": "North", "northeast": "NorthEast", "west": "West",
+                    "center": "Center", "east": "East", "southwest": "SouthWest", "south": "South", "southeast": "SouthEast",
+                }.get(position, "SouthEast")
+                offset_x, offset_y = int(params.get("offset_x", 0)), int(params.get("offset_y", 0))
+                cmd_parts += ["\\(", shlex.quote(watermark_path), "-auto-orient", f"-resize {target_width}x", "-alpha set",
+                              "-channel A", f"-evaluate set {round(opacity * 100)}%", "+channel", "\\)",
+                              f"-gravity {gravity}", f"-geometry +{offset_x}+{offset_y}", "-composite"]
             
             elif op_name == "transparent":
                 color = params.get("color", "white").lower()
@@ -343,6 +468,12 @@ class ImageMagickService:
                     cmd_parts.append("-alpha set")
                     cmd_parts.append(f"-fuzz {fuzz}%")
                     cmd_parts.append(f"-transparent '{color}'")
+
+            elif op_name == "border":
+                if img_width is None or img_height is None:
+                    raise ImageMagickError("Border requires readable image dimensions")
+                args, (img_width, img_height) = build_border_arguments(img_width, img_height, params)
+                cmd_parts.extend(args)
         
         # Add output file
         cmd_parts.append(shlex.quote(output_path))

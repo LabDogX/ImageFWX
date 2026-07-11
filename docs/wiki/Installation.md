@@ -97,6 +97,37 @@ docker compose up -d
 
 ---
 
+## NAS photo browser (optional)
+
+The NAS browser is off by default and is designed for import-by-copy: originals
+remain read-only under `/mnt/photos`, while imports become ordinary application
+uploads and processed results go to a different writable directory. On Feiniu
+NAS, use quoted Chinese paths and never mount the source as writable:
+
+```yaml
+services:
+  app:
+    volumes:
+      - "/vol1/1000/Docker/imagemagick-webui/uploads:/app/uploads"
+      - "/vol1/1000/照片处理结果:/app/processed"
+      - "/vol1/1000/Docker/imagemagick-webui/temp:/tmp/imagemagick"
+      - "/vol1/1000/照片:/mnt/photos:ro"
+    environment:
+      - NAS_BROWSER_ENABLED=true
+      - NAS_SOURCE_DIR=/mnt/photos
+      - NAS_MAX_IMPORT_FILES=100
+      - REQUIRE_LOGIN=true
+      - ALLOW_REGISTRATION=false
+```
+
+Do not point `/app/processed` at the original-photo directory. Change the
+default `SECRET_KEY` and `JWT_SECRET` before exposing the application.
+The image runs as UID/GID `10001`; grant that identity write access to the
+three writable host directories before starting it (the source directory stays
+read-only).
+
+---
+
 ### If using Option 2 (built from source):
 
 **Edit `.env`:**

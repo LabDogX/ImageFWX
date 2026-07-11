@@ -3,12 +3,13 @@ Application configuration using Pydantic Settings
 """
 
 from typing import Optional, List
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field, field_validator
 
 
 class Settings(BaseSettings):
     """Application settings with environment variable support"""
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=False)
     
     # Application
     app_name: str = "ImageMagick WebGUI"
@@ -33,6 +34,10 @@ class Settings(BaseSettings):
     upload_dir: str = "/app/uploads"
     processed_dir: str = "/app/processed"
     temp_dir: str = "/tmp/imagemagick"
+    # NAS source files are never processed in place.  This browser is opt-in.
+    nas_browser_enabled: bool = False
+    nas_source_dir: str = "/mnt/photos"
+    nas_max_import_files: int = 100
     
     # ImageMagick
     imagemagick_timeout: int = 180
@@ -79,7 +84,7 @@ class Settings(BaseSettings):
     # History retention
     history_retention_hours: int = 24
     
-    @field_validator('require_login', 'allow_registration', 'gpu_enabled', 'force_cpu', mode='before')
+    @field_validator('require_login', 'allow_registration', 'gpu_enabled', 'force_cpu', 'nas_browser_enabled', mode='before')
     @classmethod
     def parse_bool(cls, v):
         """Parse boolean from various string formats"""
@@ -97,9 +102,4 @@ class Settings(BaseSettings):
             return None
         return v
     
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
-
-
 settings = Settings()

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -79,16 +79,7 @@ export function Sidebar() {
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectColor, setNewProjectColor] = useState(PROJECT_COLORS[0]);
 
-  // Load projects when token changes
-  useEffect(() => {
-    if (token) {
-      loadProjects();
-    } else {
-      setProjects([]);
-    }
-  }, [token]);
-
-  const loadProjects = async () => {
+  const loadProjects = useCallback(async () => {
     setLoading(true);
     try {
       const data = await projectsApi.list();
@@ -98,7 +89,16 @@ export function Sidebar() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [setProjects]);
+
+  // Load projects when token changes
+  useEffect(() => {
+    if (token) {
+      loadProjects();
+    } else {
+      setProjects([]);
+    }
+  }, [token, loadProjects, setProjects]);
 
   const handleCreateProject = async () => {
     if (!newProjectName.trim()) {

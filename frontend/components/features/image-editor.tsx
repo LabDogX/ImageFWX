@@ -22,6 +22,8 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useStore } from "@/lib/store";
+import { BorderPanel } from "@/components/features/border-panel";
+import { BorderSettings, defaultBorderSettings } from "@/lib/border-presets";
 
 // Import proper API URL function
 import { getApiUrl } from '@/lib/api';
@@ -58,9 +60,17 @@ interface EditorState {
   flipH: boolean;
   flipV: boolean;
   watermarkText: string;
+  watermarkKind: 'text' | 'image';
   watermarkPosition: string;
   watermarkFontSize: number;
   watermarkOpacity: number;
+  watermarkColor: string;
+  watermarkShadowColor: string;
+  watermarkFont: 'sans' | 'serif' | 'mono';
+  watermarkImageId: number | null;
+  watermarkImageScale: number;
+  watermarkOffsetX: number;
+  watermarkOffsetY: number;
   // Resize
   resizeWidth: number;
   resizeHeight: number;
@@ -68,6 +78,7 @@ interface EditorState {
   resizeMode: 'dimensions' | 'percent';
   resizeFit: string;
   keepAspectRatio: boolean;
+  border: BorderSettings;
 }
 
 const defaultState: EditorState = {
@@ -80,9 +91,17 @@ const defaultState: EditorState = {
   flipH: false,
   flipV: false,
   watermarkText: "",
+  watermarkKind: 'text',
   watermarkPosition: "southeast",
   watermarkFontSize: 24,
   watermarkOpacity: 70,
+  watermarkColor: '#FFFFFF',
+  watermarkShadowColor: '#000000',
+  watermarkFont: 'sans',
+  watermarkImageId: null,
+  watermarkImageScale: 20,
+  watermarkOffsetX: 0,
+  watermarkOffsetY: 0,
   // Resize
   resizeWidth: 800,
   resizeHeight: 600,
@@ -90,6 +109,7 @@ const defaultState: EditorState = {
   resizeMode: 'dimensions',
   resizeFit: 'contain',
   keepAspectRatio: true,
+  border: defaultBorderSettings,
 };
 
 export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
@@ -137,6 +157,30 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
   const [processingMessage, setProcessingMessage] = useState("");
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [pendingTab, setPendingTab] = useState<string | null>(null);
+  const previewRequestRef = useRef(0);
+  const [isBorderPreviewing, setIsBorderPreviewing] = useState(false);
+
+  // A debounced backend preview uses the exact ImageMagick command builder used
+  // by export.  Old responses are ignored so a fast slider cannot repaint stale data.
+  useEffect(() => {
+    if (!state.border.enabled) return;
+    const requestId = ++previewRequestRef.current;
+    const timer = window.setTimeout(async () => {
+      setIsBorderPreviewing(true);
+      try {
+        const response = await fetch(`${getApiUrl()}/api/operations/live-preview`, {
+          method: 'POST', headers: getAuthHeaders(),
+          body: JSON.stringify({ image_id: currentImageId, operations: buildOperations(), max_size: 800 }),
+        });
+        const data = await response.json();
+        if (response.ok && data.preview && requestId === previewRequestRef.current) setImageSrc(data.preview);
+      } catch { /* keep the last valid preview */ }
+      finally { if (requestId === previewRequestRef.current) setIsBorderPreviewing(false); }
+    }, 350);
+    return () => window.clearTimeout(timer);
+  // The serialized settings avoid a new effect from unrelated editor state.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentImageId, JSON.stringify(state.border)]);
   
   // Separate AI processing states
   const [isUpscaling, setIsUpscaling] = useState(false);
@@ -146,6 +190,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
   // Get format from store - always use current value
   const globalFormat = useStore((state) => state.outputFormat);
   const globalQuality = useStore((state) => state.quality);
+  const libraryImages = useStore((state) => state.images);
   
   // Use store values directly, with local override capability
   const [outputFormat, setOutputFormat] = useState("webp");
@@ -506,9 +551,23 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
       const hueVal = 100 + (state.hue / 1.8);
       ops.push({ operation: "modulate", params: { brightness: 100, saturation: 100, hue: Math.round(hueVal) } });
     }
+    if (state.border.enabled) {
+      ops.push({ operation: "border", params: {
+        mode: state.border.mode, unit: state.border.unit, top: state.border.top, right: state.border.right,
+        bottom: state.border.bottom, left: state.border.left, color: state.border.color,
+        inner_unit: state.border.innerUnit, inner_size: state.border.innerSize, inner_color: state.border.innerColor,
+        target_ratio: state.border.targetRatio, horizontal_alignment: state.border.horizontalAlignment,
+        vertical_alignment: state.border.verticalAlignment,
+        shadow_enabled: state.border.shadowEnabled, shadow_color: state.border.shadowColor,
+        shadow_opacity: state.border.shadowOpacity, shadow_blur: state.border.shadowBlur,
+        shadow_offset_x: state.border.shadowOffsetX, shadow_offset_y: state.border.shadowOffsetY,
+      }});
+    }
     
-    if (state.watermarkText.trim()) {
-      ops.push({ operation: "watermark", params: { text: state.watermarkText, position: state.watermarkPosition, font_size: state.watermarkFontSize, opacity: state.watermarkOpacity / 100 } });
+    if (state.watermarkKind === 'text' && state.watermarkText.trim()) {
+      ops.push({ operation: "watermark", params: { text: state.watermarkText, position: state.watermarkPosition, font_size: state.watermarkFontSize, opacity: state.watermarkOpacity / 100, color: state.watermarkColor, shadow_color: state.watermarkShadowColor, font: state.watermarkFont } });
+    } else if (state.watermarkKind === 'image' && state.watermarkImageId) {
+      ops.push({ operation: "image-watermark", params: { image_id: state.watermarkImageId, position: state.watermarkPosition, scale: state.watermarkImageScale, opacity: state.watermarkOpacity / 100, offset_x: state.watermarkOffsetX, offset_y: state.watermarkOffsetY } });
     }
     
     return ops;
@@ -824,7 +883,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                 )}
                 
                 {/* Watermark preview */}
-                {state.watermarkText && !cropMode && (
+                {state.watermarkKind === 'text' && state.watermarkText && !cropMode && (
                   <div 
                     className={cn(
                       "absolute pointer-events-none",
@@ -840,10 +899,11 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                     )}
                     style={{ 
                       fontSize: `${Math.max(10, state.watermarkFontSize * zoom)}px`,
-                      fontFamily: 'Arial, Helvetica, sans-serif',
+                      fontFamily: state.watermarkFont === 'serif' ? 'Georgia, serif' : state.watermarkFont === 'mono' ? 'ui-monospace, monospace' : 'Arial, Helvetica, sans-serif',
                       fontWeight: 'normal',
-                      color: `rgba(255, 255, 255, ${state.watermarkOpacity / 100})`,
-                      textShadow: `1px 1px 0 rgba(0, 0, 0, ${state.watermarkOpacity / 100})`,
+                      color: state.watermarkColor,
+                      opacity: state.watermarkOpacity / 100,
+                      textShadow: `1px 1px 0 ${state.watermarkShadowColor}`,
                     }}
                   >
                     {state.watermarkText}
@@ -881,11 +941,12 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
               </div>
               
               <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col">
-                <TabsList className="grid grid-cols-5 mx-3 mt-3">
+                <TabsList className="grid grid-cols-3 mx-3 mt-3 h-auto">
                   <TabsTrigger value="adjust" className="text-xs"><Sliders className="h-3.5 w-3.5 mr-1" />Adjust</TabsTrigger>
                   <TabsTrigger value="resize" className="text-xs"><Maximize2 className="h-3.5 w-3.5 mr-1" />Resize</TabsTrigger>
                   <TabsTrigger value="crop" className="text-xs"><Square className="h-3.5 w-3.5 mr-1" />Crop</TabsTrigger>
                   <TabsTrigger value="text" className="text-xs"><Type className="h-3.5 w-3.5 mr-1" />Text</TabsTrigger>
+                  <TabsTrigger value="frame" className="text-xs"><Square className="h-3.5 w-3.5 mr-1" />Frame</TabsTrigger>
                   <TabsTrigger value="ai" className="text-xs"><Wand2 className="h-3.5 w-3.5 mr-1" />AI</TabsTrigger>
                 </TabsList>
                 
@@ -1083,6 +1144,12 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                     <SaveButton />
                   </TabsContent>
                   
+                  <TabsContent value="frame" className="mt-0 p-4">
+                    <BorderPanel value={state.border} onChange={(border) => { setState(s => ({ ...s, border })); setHasUnsavedChanges(true); }} />
+                    {isBorderPreviewing && <p className="mt-2 text-xs text-muted-foreground">Updating ImageMagick preview…</p>}
+                    <SaveButton />
+                  </TabsContent>
+
                   {/* Crop tab */}
                   <TabsContent value="crop" className="mt-0 space-y-4">
                     <div className="rounded-xl border p-4 space-y-3">
@@ -1130,14 +1197,11 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                   
                   {/* Text/Watermark tab */}
                   <TabsContent value="text" className="mt-0 space-y-4">
-                    <div className="space-y-2">
-                      <Label className="text-xs">Watermark Text</Label>
-                      <Input 
-                        value={state.watermarkText} 
-                        onChange={(e) => setState(s => ({ ...s, watermarkText: e.target.value }))} 
-                        placeholder="Enter watermark..." 
-                      />
-                    </div>
+                    <div className="grid grid-cols-2 gap-2"><Button variant={state.watermarkKind === 'text' ? 'default' : 'outline'} size="sm" onClick={() => setState(s => ({ ...s, watermarkKind: 'text' }))}>Text</Button><Button variant={state.watermarkKind === 'image' ? 'default' : 'outline'} size="sm" onClick={() => setState(s => ({ ...s, watermarkKind: 'image' }))}>Logo / Image</Button></div>
+                    {state.watermarkKind === 'text' ? <>
+                      <div className="space-y-2"><Label className="text-xs">Watermark Text</Label><Input value={state.watermarkText} onChange={(e) => setState(s => ({ ...s, watermarkText: e.target.value }))} placeholder="Enter watermark..." /></div>
+                      <div className="grid grid-cols-3 gap-2"><label className="text-xs">Font<select className="mt-1 w-full rounded border bg-background p-2" value={state.watermarkFont} onChange={e => setState(s => ({ ...s, watermarkFont: e.target.value as EditorState['watermarkFont'] }))}><option value="sans">Sans</option><option value="serif">Serif</option><option value="mono">Mono</option></select></label><label className="text-xs">Text color<input className="mt-1 h-9 w-full" type="color" value={state.watermarkColor} onChange={e => setState(s => ({ ...s, watermarkColor: e.target.value.toUpperCase() }))} /></label><label className="text-xs">Shadow color<input className="mt-1 h-9 w-full" type="color" value={state.watermarkShadowColor} onChange={e => setState(s => ({ ...s, watermarkShadowColor: e.target.value.toUpperCase() }))} /></label></div>
+                    </> : <div className="space-y-3 rounded border p-3"><Label className="text-xs">Use an uploaded PNG, JPEG, WebP, or SVG as a logo/image watermark</Label><select className="w-full rounded border bg-background p-2 text-sm" value={state.watermarkImageId ?? ''} onChange={e => setState(s => ({ ...s, watermarkImageId: e.target.value ? Number(e.target.value) : null }))}><option value="">Select an uploaded image</option>{libraryImages.filter(candidate => candidate.id !== currentImageId && candidate.mimeType.startsWith('image/')).map(candidate => <option value={candidate.id} key={candidate.id}>{candidate.originalFilename}</option>)}</select><label className="text-xs">Scale: {state.watermarkImageScale}% of short edge<Slider className="mt-2" value={[state.watermarkImageScale]} min={1} max={100} step={1} onValueChange={([value]) => setState(s => ({ ...s, watermarkImageScale: value }))} /></label><div className="grid grid-cols-2 gap-2"><label className="text-xs">X offset<Input type="number" min="0" value={state.watermarkOffsetX} onChange={e => setState(s => ({ ...s, watermarkOffsetX: Number(e.target.value) || 0 }))} /></label><label className="text-xs">Y offset<Input type="number" min="0" value={state.watermarkOffsetY} onChange={e => setState(s => ({ ...s, watermarkOffsetY: Number(e.target.value) || 0 }))} /></label></div></div>}
                     <div className="space-y-2">
                       <Label className="text-xs">Position</Label>
                       <div className="grid grid-cols-3 gap-2 w-fit mx-auto">
@@ -1184,9 +1248,9 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                         min={10} max={100} step={5}
                       />
                     </div>
-                    {state.watermarkText && (
+                    {(state.watermarkKind === 'text' ? state.watermarkText : state.watermarkImageId) && (
                       <div className="p-3 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800">
-                        <p className="text-sm text-green-700 dark:text-green-300">✓ "{state.watermarkText}" at {state.watermarkPosition} ({state.watermarkFontSize}pt, {state.watermarkOpacity}%)</p>
+                        <p className="text-sm text-green-700 dark:text-green-300">✓ {state.watermarkKind === 'text' ? `"${state.watermarkText}"` : 'Image watermark'} at {state.watermarkPosition} ({state.watermarkOpacity}%)</p>
                       </div>
                     )}
                     

@@ -5,7 +5,7 @@ Queue API for job management
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse, StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 from datetime import datetime
@@ -27,6 +27,7 @@ router = APIRouter()
 
 # Response models
 class JobDetailResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: int
     job_id: str
     operation: str
@@ -40,10 +41,6 @@ class JobDetailResponse(BaseModel):
     completed_at: Optional[datetime]
     parameters: dict
     
-    class Config:
-        from_attributes = True
-
-
 class QueueStatsResponse(BaseModel):
     queued: int
     processing: int

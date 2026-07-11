@@ -3,10 +3,15 @@ File handling service for uploads and downloads
 """
 
 import os
+import asyncio
 import uuid
 import zipfile
 import aiofiles
-import magic
+try:
+    import magic
+except ImportError:  # Fail closed below when libmagic is not installed.
+    magic = None
+import shutil
 from pathlib import Path
 from typing import List, Optional, Tuple
 from datetime import datetime, timedelta
@@ -43,6 +48,13 @@ class FileService:
         self.upload_dir.mkdir(parents=True, exist_ok=True)
         self.processed_dir.mkdir(parents=True, exist_ok=True)
         self.temp_dir.mkdir(parents=True, exist_ok=True)
+
+    @staticmethod
+    def _detect_mime(path_or_data, *, from_file: bool = False) -> str:
+        """Use libmagic when available; do not accept a file without MIME validation."""
+        if magic is None:
+            raise RuntimeError("libmagic is required for file MIME validation")
+        return magic.from_file(str(path_or_data), mime=True) if from_file else magic.from_buffer(path_or_data, mime=True)
     
     async def validate_file(
         self, 
@@ -63,7 +75,10 @@ class FileService:
         await file.seek(0)  # Reset file pointer
         
         # Detect MIME type
-        mime_type = magic.from_buffer(chunk, mime=True)
+        try:
+            mime_type = self._detect_mime(chunk)
+        except RuntimeError as error:
+            return False, str(error), None
         
         # Check if MIME type is allowed
         if mime_type not in self.MIME_TYPE_MAP:
@@ -109,6 +124,32 @@ class FileService:
             await f.write(content)
         
         return stored_filename, str(file_path), len(content)
+
+    async def validate_local_image(self, path: Path) -> Tuple[bool, str, Optional[str]]:
+        """Validate a server-side file with the same extension, MIME and size rules."""
+        if not path.is_file():
+            return False, "Path is not a file", None
+        if path.suffix.lower() not in settings.allowed_extensions:
+            return False, f"File extension {path.suffix.lower()} not allowed", None
+        if path.stat().st_size > settings.max_upload_size_mb * 1024 * 1024:
+            return False, f"File size exceeds {settings.max_upload_size_mb}MB limit", None
+        try:
+            mime_type = self._detect_mime(path, from_file=True)
+        except RuntimeError as error:
+            return False, str(error), None
+        if mime_type not in self.MIME_TYPE_MAP:
+            return False, f"File type {mime_type} not allowed", None
+        return True, "", mime_type
+
+    async def copy_into_uploads(self, source_path: Path, original_filename: str, user_id: Optional[int] = None) -> Tuple[str, str, int]:
+        """Copy a validated local file into the application working directory."""
+        extension = Path(original_filename).suffix.lower()
+        stored_filename = f"{uuid.uuid4().hex}{extension}"
+        destination_dir = self.upload_dir / (str(user_id) if user_id else "anonymous")
+        destination_dir.mkdir(parents=True, exist_ok=True)
+        destination = destination_dir / stored_filename
+        await asyncio.to_thread(shutil.copyfile, source_path, destination)
+        return stored_filename, str(destination), destination.stat().st_size
     
     async def create_thumbnail(
         self,

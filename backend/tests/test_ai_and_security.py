@@ -5,6 +5,7 @@ Covers changes around rembg model defaults and the validate_path sanitizer
 """
 
 import pytest
+from pathlib import Path
 
 
 class TestPathValidation:
@@ -44,7 +45,8 @@ class TestPathValidation:
         
         result = validate_path("/tmp/some_generated_file.png")
         assert isinstance(result, str)
-        assert result.startswith("/tmp")
+        # macOS resolves /tmp to /private/tmp; compare canonical roots instead.
+        assert Path(result).is_relative_to(Path("/tmp").resolve())
 
 
 class TestAIConfiguration:

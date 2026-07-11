@@ -109,6 +109,11 @@ export const authApi = {
     const { data } = await api.get('/api/auth/google/status');
     return data;
   },
+
+  registrationStatus: async () => {
+    const { data } = await api.get('/api/auth/registration-status');
+    return data;
+  },
   
   googleAuthUrl: async () => {
     const { data } = await api.get('/api/auth/google/auth-url');
@@ -194,6 +199,12 @@ export const imagesApi = {
     });
     return data;
   },
+};
+
+export const nasApi = {
+  status: async () => (await api.get('/api/nas/status')).data,
+  browse: async (path = '') => (await api.get('/api/nas/browse', { params: { path } })).data,
+  import: async (relativePaths: string[]) => (await api.post('/api/nas/import', { relative_paths: relativePaths })).data,
 };
 
 // Operations API

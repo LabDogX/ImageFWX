@@ -3,7 +3,7 @@
 import { useCallback, useState, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, Image, Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { Upload, Image as ImageIcon, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useStore } from '@/lib/store';
 import { imagesApi } from '@/lib/api';
@@ -57,7 +57,7 @@ export function UploadZone() {
     setProgress(0);
 
     try {
-      const response = await imagesApi.upload(acceptedFiles, (p) => setProgress(p));
+      const response = await imagesApi.upload(acceptedFiles, undefined, (p) => setProgress(p));
       
       if (response.images.length > 0) {
         const formattedImages = response.images.map((img: any) => ({
@@ -165,7 +165,7 @@ export function UploadZone() {
               className="flex flex-col items-center gap-3"
             >
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-secondary">
-                <Image className="h-8 w-8 text-muted-foreground" />
+                <ImageIcon className="h-8 w-8 text-muted-foreground" />
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-medium">

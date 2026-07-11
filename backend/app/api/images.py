@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Query
 from fastapi.responses import FileResponse, StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from pathlib import Path
@@ -23,6 +23,7 @@ from app.models.user import User
 from app.models.image import Image
 from app.services.file_service import file_service
 from app.services.imagemagick import imagemagick_service
+from app.services.image_import_service import register_uploaded_copy
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -67,6 +68,7 @@ def validate_path(file_path: str) -> str:
 
 # Response models
 class ImageResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: int
     original_filename: str
     stored_filename: str
@@ -79,10 +81,6 @@ class ImageResponse(BaseModel):
     created_at: datetime
     project_id: Optional[int] = None
     
-    class Config:
-        from_attributes = True
-
-
 class UploadResponse(BaseModel):
     images: List[ImageResponse]
     failed: List[dict]
@@ -117,39 +115,17 @@ async def upload_images(
                 file, user_id
             )
             
-            # Get image info
-            image_info = await imagemagick_service.get_image_info(file_path)
-            
-            # Create thumbnail
-            logger.info(f"Creating thumbnail for {file_path}")
-            thumbnail_path = await file_service.create_thumbnail(file_path, user_id)
-            logger.info(f"Thumbnail result: {thumbnail_path}")
-            
-            # Create database record
-            image = Image(
-                user_id=user_id,
-                original_filename=file.filename or "unknown",
-                stored_filename=stored_filename,
-                file_path=file_path,
-                thumbnail_path=thumbnail_path,
-                mime_type=mime_type,
-                file_size=file_size,
-                width=image_info.get("width") if image_info else None,
-                height=image_info.get("height") if image_info else None,
-                format=image_info.get("format") if image_info else None,
-                image_metadata=image_info or {},
-                expires_at=datetime.utcnow() + timedelta(hours=settings.history_retention_hours)
+            image = await register_uploaded_copy(
+                db, stored_filename=stored_filename, file_path=file_path,
+                file_size=file_size, original_filename=file.filename or "unknown",
+                mime_type=mime_type, user_id=user_id,
             )
-            
-            db.add(image)
-            await db.commit()
-            await db.refresh(image)
             
             uploaded.append(ImageResponse(
                 id=image.id,
                 original_filename=image.original_filename,
                 stored_filename=image.stored_filename,
-                thumbnail_url=f"/api/images/{image.id}/thumbnail" if thumbnail_path else None,
+                thumbnail_url=f"/api/images/{image.id}/thumbnail" if image.thumbnail_path else None,
                 mime_type=image.mime_type,
                 file_size=image.file_size,
                 width=image.width,

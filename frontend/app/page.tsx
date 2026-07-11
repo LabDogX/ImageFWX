@@ -1,18 +1,22 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
 import { UploadZone } from '@/components/features/upload-zone';
+import { NASBrowser } from '@/components/features/nas-browser';
 import { ImageGallery } from '@/components/features/image-gallery';
 import { OperationsPanel } from '@/components/features/operations-panel';
 import { useStore } from '@/lib/store';
-import { imagesApi, authApi } from '@/lib/api';
+import { imagesApi, authApi, nasApi } from '@/lib/api';
+import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 export default function HomePage() {
   const { images, setImages, token, setUser, sidebarOpen } = useStore();
+  const [source, setSource] = useState<'upload' | 'nas'>('upload');
+  const [nasEnabled, setNasEnabled] = useState(false);
 
   // Load user data on mount
   useEffect(() => {
@@ -58,6 +62,8 @@ export default function HomePage() {
     loadImages();
   }, [setImages]);
 
+  useEffect(() => { nasApi.status().then(data => setNasEnabled(Boolean(data.enabled))).catch(() => setNasEnabled(false)); }, []);
+
   return (
     <div className="flex h-screen bg-background">
       {/* Sidebar */}
@@ -76,8 +82,11 @@ export default function HomePage() {
               transition={{ duration: 0.3 }}
               className="space-y-6 max-w-6xl mx-auto"
             >
-              {/* Upload Zone */}
-              <UploadZone />
+              <div className="flex gap-2" role="tablist" aria-label="Photo source">
+                <Button variant={source === 'upload' ? 'default' : 'outline'} onClick={() => setSource('upload')}>Upload</Button>
+                {nasEnabled && <Button variant={source === 'nas' ? 'default' : 'outline'} onClick={() => setSource('nas')}>NAS</Button>}
+              </div>
+              {source === 'upload' ? <UploadZone /> : <NASBrowser />}
 
               {/* Gallery */}
               <ImageGallery />

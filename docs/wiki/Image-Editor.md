@@ -98,6 +98,28 @@ Add watermarks to your images:
 | **Font Size** | 8-72pt |
 | **Opacity** | 10-100% transparency |
 
+### Frame Tab
+
+The Frame tab applies a backend ImageMagick border, not a CSS-only effect. It
+supports linked or independent sides in pixels or percent of each image's short
+edge, hexadecimal colors, double borders, and canvas-only matte ratios. The
+available original parameter presets are Classic White, Thin Black, Polaroid,
+Double Gallery, Square Matte, and Portrait Matte. Frame processing runs before
+the text watermark, so text can be placed in the extended canvas.
+
+Additional original presets include Warm Ivory, Graphite Gallery, Wide Matte,
+Story Matte, Floating Paper, and Double Onyx. Floating Paper uses a configurable
+ImageMagick shadow; no frame image assets are used.
+
+### Logo and image watermarks
+
+The Text tab also supports uploaded image watermarks. Choose an existing PNG,
+JPEG, WebP, or SVG item from the image library, then set its size as a percentage
+of the source image short edge, opacity, position, and offsets. The backend
+resolves only that image's validated internal path; browser-supplied file paths
+are never accepted. Text watermarks provide custom text/shadow hex colors and
+the built-in Sans, Serif, and Mono font choices.
+
 **Position Grid:**
 ```
 ┌────────┬────────┬────────┐

@@ -4,9 +4,9 @@ Operations API for image processing
 
 import os
 import shlex
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional, Any, Literal
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime
@@ -81,16 +81,107 @@ class FilterParams(BaseModel):
 
 
 class WatermarkParams(BaseModel):
-    text: Optional[str] = None
-    image_id: Optional[int] = None
-    position: str = "southeast"  # 9 positions
-    opacity: float = 0.5
-    scale: float = 0.2
+    model_config = ConfigDict(extra="forbid")
+    text: str = Field(min_length=1, max_length=1000)
+    position: Literal["northwest", "north", "northeast", "west", "center", "east", "southwest", "south", "southeast"] = "southeast"
+    font_size: int = Field(24, ge=8, le=512)
+    opacity: float = Field(0.5, ge=0.1, le=1.0)
+    color: str = "#FFFFFF"
+    shadow_color: str = "#000000"
+    font: Literal["sans", "serif", "mono"] = "sans"
+
+    @field_validator("color", "shadow_color")
+    @classmethod
+    def watermark_hex_only(cls, value: str) -> str:
+        from app.services.imagemagick import validate_hex_color
+        if not validate_hex_color(value):
+            raise ValueError("Color must be #RGB, #RRGGBB, or #RRGGBBAA")
+        return value.upper()
+
+
+class ImageWatermarkParams(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    image_id: int = Field(gt=0)
+    position: Literal["northwest", "north", "northeast", "west", "center", "east", "southwest", "south", "southeast"] = "southeast"
+    scale: float = Field(20, ge=1, le=100, description="Percentage of source image short edge")
+    opacity: float = Field(1.0, ge=0.05, le=1.0)
+    offset_x: int = Field(0, ge=0, le=5000)
+    offset_y: int = Field(0, ge=0, le=5000)
+
+
+class BorderParams(BaseModel):
+    """Validated, injection-safe public contract for the border operation."""
+    model_config = ConfigDict(extra="forbid")
+    mode: Literal["custom", "double", "matte"] = "custom"
+    unit: Literal["px", "percent"] = "percent"
+    top: float = Field(0, ge=0)
+    right: float = Field(0, ge=0)
+    bottom: float = Field(0, ge=0)
+    left: float = Field(0, ge=0)
+    color: str = "#FFFFFF"
+    inner_unit: Literal["px", "percent"] = "percent"
+    inner_size: float = Field(0, ge=0)
+    inner_color: str = "#111111"
+    target_ratio: Literal["original", "1:1", "4:5", "3:2", "2:3", "16:9", "9:16"] = "original"
+    horizontal_alignment: Literal["left", "center", "right"] = "center"
+    vertical_alignment: Literal["top", "center", "bottom"] = "center"
+    shadow_enabled: bool = False
+    shadow_color: str = "#000000"
+    shadow_opacity: float = Field(0.25, ge=0, le=1)
+    shadow_blur: int = Field(8, ge=0, le=50)
+    shadow_offset_x: int = Field(0, ge=-500, le=500)
+    shadow_offset_y: int = Field(8, ge=-500, le=500)
+
+    @field_validator("color", "inner_color", "shadow_color")
+    @classmethod
+    def hex_color_only(cls, value: str) -> str:
+        from app.services.imagemagick import validate_hex_color
+        if not validate_hex_color(value):
+            raise ValueError("Color must be #RGB, #RRGGBB, or #RRGGBBAA")
+        return value.upper()
+
+    @model_validator(mode="after")
+    def check_unit_limits(self):
+        maximum = 5000 if self.unit == "px" else 50
+        if any(value > maximum for value in (self.top, self.right, self.bottom, self.left)):
+            raise ValueError(f"Border values must be 0-{maximum} for {self.unit}")
+        inner_max = 1000 if self.inner_unit == "px" else 20
+        if self.inner_size > inner_max:
+            raise ValueError(f"inner_size must be 0-{inner_max} for {self.inner_unit}")
+        return self
 
 
 class Operation(BaseModel):
     operation: str
     params: Dict[str, Any] = {}
+
+    @model_validator(mode="after")
+    def validate_known_operation_params(self):
+        operation_name = self.operation.lower().replace("_", "-")
+        if operation_name == "border":
+            self.params = BorderParams.model_validate(self.params).model_dump()
+        elif operation_name == "watermark":
+            self.params = WatermarkParams.model_validate(self.params).model_dump()
+        elif operation_name == "image-watermark":
+            self.params = ImageWatermarkParams.model_validate(self.params).model_dump()
+        return self
+
+
+async def resolve_image_watermark_paths(operations: List[Dict], db: AsyncSession, current_user: Optional[User]) -> List[Dict]:
+    """Replace public watermark IDs with validated internal paths for workers."""
+    user_id = current_user.id if current_user else None
+    for operation in operations:
+        if operation.get("operation", "").lower().replace("_", "-") != "image-watermark":
+            continue
+        params = operation["params"]
+        result = await db.execute(select(Image).where(Image.id == params["image_id"]))
+        watermark = result.scalar_one_or_none()
+        if not watermark or (watermark.user_id is not None and watermark.user_id != user_id):
+            raise HTTPException(status_code=404, detail="Watermark image not found")
+        if not (watermark.mime_type or "").startswith("image/"):
+            raise HTTPException(status_code=422, detail="Watermark must be an image")
+        params["image_path"] = validate_path(watermark.file_path)
+    return operations
 
 
 class ProcessRequest(BaseModel):
@@ -158,7 +249,7 @@ async def process_operation(
     input_files = [img.file_path for img in images]
     
     # Build operations list with quality
-    operations = [op.model_dump() for op in request.operations]
+    operations = await resolve_image_watermark_paths([op.model_dump() for op in request.operations], db, current_user)
     operations.append({
         "operation": "quality",
         "params": {"value": request.quality}
@@ -272,6 +363,8 @@ async def process_raw(
 async def preview_command(request: PreviewCommandRequest):
     """Preview the ImageMagick command that will be executed"""
     operations = [op.model_dump() for op in request.operations]
+    if any(op["operation"].lower().replace("_", "-") == "image-watermark" for op in operations):
+        raise HTTPException(status_code=422, detail="Image watermarks require a selected image preview")
     operations.append({
         "operation": "quality",
         "params": {"value": request.quality}
@@ -449,7 +542,7 @@ async def live_preview(
             raise HTTPException(status_code=404, detail="Image file not found")
         
         # If no operations, just return original image as base64
-        operations = [op.model_dump() for op in request.operations]
+        operations = await resolve_image_watermark_paths([op.model_dump() for op in request.operations], db, current_user)
         
         if not operations or len(operations) == 0:
             import base64
@@ -867,7 +960,7 @@ async def process_sync(
     validated_input_path = validate_path(image.file_path)
     
     # Build operations
-    operations = [op.model_dump() for op in request.operations]
+    operations = await resolve_image_watermark_paths([op.model_dump() for op in request.operations], db, current_user)
     
     logger.info(f"PROCESS-SYNC: image_id={request.image_id}")
     
@@ -1013,7 +1106,7 @@ async def download_direct(
     
     validated_input_path = validate_path(image.file_path)
     
-    operations = [op.model_dump() for op in request.operations]
+    operations = await resolve_image_watermark_paths([op.model_dump() for op in request.operations], db, current_user)
     
     actual_output_format = request.output_format.lower().replace('/', '').replace('\\', '').replace('..', '')
     

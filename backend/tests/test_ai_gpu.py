@@ -54,7 +54,8 @@ def test_cuda_selected_with_cpu_fallback(monkeypatch):
     svc = _make_service(monkeypatch, gpu_enabled=True, force_cpu=False, cuda_present=True)
     providers = svc._resolve_providers()
     assert providers[0][0] == "CUDAExecutionProvider"
-    assert providers[0][1]["gpu_mem_limit"] == 2 * 1024 * 1024 * 1024
+    # Default 0 deliberately leaves the CUDA arena uncapped for large models.
+    assert "gpu_mem_limit" not in providers[0][1]
     assert providers[-1] == "CPUExecutionProvider"
     assert svc._gpu_active is True
     assert svc._default_model() == "birefnet-general"
