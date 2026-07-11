@@ -1,75 +1,44 @@
-<div align="center">
-
-<img src="./assets/icon.png" alt="ImageFWX 图标" width="180"/>
-
 # ImageFWX
 
-> 中文 README。仓库主页使用 [English README](README.md)。修改用户可见功能或部署说明时，必须同步更新两份 README。
+> 中文项目说明 · [English README](README.md)
 
-</div>
+ImageFWX 是一个基于 ImageMagick 的自托管照片成片工作台。它在 Next.js、FastAPI、PostgreSQL 和 Redis 架构上提供可视化边框编辑器、文字与图片水印、批量处理，以及安全的 NAS 只读照片浏览。
 
-## 相框、边框与 NAS 照片
+用户可见功能或部署说明变更时，必须同时更新本文件和 [README.md](README.md)。
 
-ImageFWX 是基于 ImageMagick WebGUI 的功能增强 fork，提供原创的照片边框、文字/图片水印，以及 NAS 只读浏览和导入。
+## ImageFWX 适合做什么
 
-边框由后端 ImageMagick 生成，实时预览与最终导出共用同一条处理逻辑。项目不包含外部相框代码、素材或预设文件。
+- 用统一边框和水印处理单张照片或批量照片。
+- 从 NAS 导入照片，不暴露、修改或移动原始文件。
+- 将处理结果保存到独立的 NAS 输出目录。
+- 在要求登录的私有 Docker 部署中完成完整工作流。
 
-NAS 浏览器默认关闭。开启后，NAS 原图以只读方式挂载，选中的文件会先复制到应用 uploads 工作目录；原图不会被修改、重命名或生成缩略图。处理结果必须保存到独立的可写目录，绝不能将 `/app/processed` 指向原始照片目录。
-
-```yaml
-volumes:
-  - "/vol1/1000/照片:/mnt/photos:ro"
-  - "/vol1/1000/照片处理结果:/app/processed"
-environment:
-  - NAS_BROWSER_ENABLED=true
-  - NAS_SOURCE_DIR=/mnt/photos
-  - NAS_MAX_IMPORT_FILES=100
-  - REQUIRE_LOGIN=true
-  - ALLOW_REGISTRATION=false
-```
-
-## 功能
-
-### 图像处理
-
-- 缩放、裁剪、旋转、翻转与格式转换
-- 模糊、锐化、灰度、褐色调、亮度、对比度与饱和度
-- 多图批量处理
-- 直接下载和处理历史
+## 核心功能
 
 ### 相框与边框
 
-- 四边可独立设置，或使用四边联动
-- 像素单位或原图短边百分比
-- 严格十六进制颜色校验：`#RGB`、`#RRGGBB`、`#RRGGBBAA`
-- 双层边框、固定画布比例和对齐
-- 可选悬浮阴影相框
-- 后端 ImageMagick 实时预览
-
-内置原创预设：
-
-- Classic White、Thin Black、Polaroid、Double Gallery
-- Square Matte、Portrait Matte、Warm Ivory、Graphite Gallery
-- Wide Matte、Story Matte、Floating Paper、Double Onyx
-- Custom（完全自定义）
-
-支持的画布比例：原始比例、1:1、4:5、3:2、2:3、16:9、9:16。边框会在文字/图片水印之前处理，因此水印可以定位在扩展后的画布区域。
+- 上、右、下、左可独立设置或联动设置；单位可选像素或每张照片短边百分比。
+- 支持安全的 `#RGB`、`#RRGGBB`、`#RRGGBBAA` 颜色、双层边框、固定比例 matte 画布、对齐与可调悬浮阴影。
+- 原创预设：Classic White、Thin Black、Polaroid、Double Gallery、Square Matte、Portrait Matte、Warm Ivory、Graphite Gallery、Wide Matte、Story Matte、Floating Paper、Double Onyx 和 Custom。
+- 后端 ImageMagick 预览与最终导出共用同一命令构建逻辑。
 
 ### 水印
 
-- 文字水印：九宫格定位、8–72 pt 字号、不透明度、文字色、阴影色
-- 容器内字体白名单：Sans、Serif、Mono
-- Logo/图片水印：从已上传的 PNG、JPEG、WebP 或 SVG 图片库项中选择
-- 图片水印支持位置、按原图短边计算的缩放、不透明度和 X/Y 偏移
+- 文字水印支持九宫格位置、不透明度、字号、文字颜色、阴影颜色和内置 Sans、Serif、Mono 字体。
+- Logo/图片水印可从已上传的 PNG、JPEG、WebP 或 SVG 图片库项中选择，可设置缩放、不透明度、位置和 X/Y 偏移。
+- 图片水印请求只包含图片 ID，不接受浏览器提交服务器文件路径；后端验证访问权限后再解析内部路径。
 
-图片水印 API 只接受数据库图片 ID；后端会验证所有权和 MIME 类型，再解析内部路径，不接受浏览器传入的服务器文件路径。
+### NAS 导入与输出
 
-### AI 与界面
+- NAS 目录浏览是可选功能，默认关闭，并受既有登录验证保护。
+- 拒绝绝对路径、路径穿越、编码路径穿越、Windows 路径和越出 NAS 根目录的符号链接。
+- 导入前校验扩展名、MIME 类型和文件大小。
+- NAS 原图始终只读；导入副本进入 `/app/uploads`，处理结果写入 `/app/processed`。
 
-- rembg 一键移除背景
-- 自动增强与 2×/4× 智能放大
-- 图片库、拖放上传、明暗主题、PWA 和终端模式
-- Upload / NAS 切换入口；NAS 功能关闭时不会显示 NAS 入口
+### 保留的编辑工具
+
+- 缩放、裁剪、旋转、翻转、格式转换、滤镜、直接下载、图片库、历史和批量任务。
+- 在可选 AI 运行时可用时，支持背景移除、自动增强和 2×/4× 放大。
 
 ## 快速开始
 
@@ -79,45 +48,43 @@ cd ImageFWX
 cp .env.example .env
 ```
 
-编辑 `.env`，至少填写：
+启动前在 `.env` 填写：
 
 ```env
 SECRET_KEY=<openssl rand -hex 32>
 JWT_SECRET=<openssl rand -hex 32>
 POSTGRES_PASSWORD=<随机且 URL 安全的密码>
 ALLOWED_ORIGINS=https://你的域名
+REQUIRE_LOGIN=true
+ALLOW_REGISTRATION=false
 ```
 
-然后构建并启动：
+构建并启动 CPU 服务：
 
 ```bash
 docker compose up -d --build
 ```
 
-默认访问地址：
+默认外部端口：
 
-| 服务 | 外部端口 | 说明 |
+| 服务 | 主机端口 | 用途 |
 |---|---:|---|
-| Web 前端 | 3012 | Next.js 界面 |
-| 后端 API | 8012 | FastAPI REST API |
-| PostgreSQL | 5432 | 仅 Docker 内部使用 |
-| Redis | 6379 | 仅 Docker 内部使用 |
+| Web 界面 | 3012 | Next.js 用户界面 |
+| API | 8012 | FastAPI API 和 API 文档 |
 
 - Swagger：`http://localhost:8012/docs`
 - ReDoc：`http://localhost:8012/redoc`
 
 ## NAS / 飞牛部署
 
-复制并按实际主机路径修改 NAS 覆盖文件：
+复制覆盖配置，将示例路径替换为实际 NAS 路径，然后使用两份 Compose 配置启动：
 
 ```bash
 cp docker-compose.nas.example.yml docker-compose.nas.yml
 docker compose -f docker-compose.yml -f docker-compose.nas.yml up -d --build
 ```
 
-容器以固定 UID/GID `10001` 运行。开始前，请为主机上的 `uploads`、`processed` 与 `temp` 目录授予 UID/GID `10001` 写权限；原始照片目录只保持 `:ro` 挂载。
-
-示例：
+挂载示例：
 
 ```yaml
 services:
@@ -127,16 +94,36 @@ services:
       - "/vol1/1000/照片处理结果:/app/processed"
       - "/vol1/1000/Docker/imagemagick-webui/temp:/tmp/imagemagick"
       - "/vol1/1000/照片:/mnt/photos:ro"
+    environment:
+      NAS_BROWSER_ENABLED: "true"
+      NAS_SOURCE_DIR: /mnt/photos
+      NAS_MAX_IMPORT_FILES: "100"
 ```
 
-外网部署时必须：
+容器以 UID/GID `10001` 运行。请为主机的 `uploads`、`processed` 和 `temp` 目录授予该身份写权限；原始照片目录必须保持只读挂载，且绝不能把 `/app/processed` 映射到该目录。
 
-- 使用 HTTPS 反向代理，并将 `ALLOWED_ORIGINS` 设置为实际域名
-- 保持 `REQUIRE_LOGIN=true` 与 `ALLOW_REGISTRATION=false`
-- 使用随机 `SECRET_KEY`、`JWT_SECRET`、`POSTGRES_PASSWORD`
-- 不公开 PostgreSQL 和 Redis 端口
+## 处理工作流
 
-## 本地开发与验证
+```text
+NAS 原始照片（只读）
+  -> 将选择的文件复制到 /app/uploads
+  -> 编辑、预览、添加水印或批量处理
+  -> 将结果写入 /app/processed
+  -> NAS 处理结果目录（可写）
+```
+
+边框会在水印之前处理，所以文字和 Logo 可以定位在扩展的边框或 matte 区域。批量任务中，每张图片都会独立计算百分比边距和目标画布尺寸。
+
+## 配置与安全
+
+- `NAS_BROWSER_ENABLED=false` 是默认值。
+- 任何可被互联网访问的部署都应保持 `REQUIRE_LOGIN=true` 和 `ALLOW_REGISTRATION=false`。
+- 在反向代理使用 HTTPS，并将 `ALLOWED_ORIGINS` 设置为实际站点。
+- 不要发布 PostgreSQL 或 Redis 端口。
+- 首次启动前替换三个必填密钥。
+- ImageMagick 命令基于已验证的操作参数构建，并设有超时和资源限制；图片与 NAS 文件均做 MIME 校验。
+
+## 开发与验证
 
 后端：
 
@@ -158,42 +145,12 @@ npm run build
 npm audit
 ```
 
-## 项目结构
-
-```text
-ImageFWX/
-├── backend/                 # FastAPI、任务 Worker、ImageMagick 服务与测试
-├── frontend/                # Next.js 用户界面
-├── docs/wiki/               # 安装、编辑器、安全与部署文档
-├── docker-compose.yml       # 主 Compose 配置
-├── docker-compose.nas.example.yml
-├── Dockerfile
-├── README.md                # English repository homepage
-└── README.zh-CN.md          # 本文件
-```
-
-## 安全原则
-
-- ImageMagick 命令白名单、资源限制和参数校验
-- NAS 仅接受相对路径，阻止路径穿越、绝对路径与符号链接越界
-- NAS 原图只读；导入副本进入应用工作目录
-- 文件扩展名、MIME 类型和大小均需校验
-- 容器以非 root 用户运行
-
 ## 许可证与鸣谢
 
-本项目保留上游 MIT License 与版权声明。边框、NAS 导入和水印增强均为本项目原创实现；未引入或打包 Magick Frames 的代码、配置、素材或专有命名。
+ImageFWX 保留上游 MIT License 和版权声明。相框、NAS 导入和水印增强均为原创实现；不包含 Magick Frames 的源码、素材、配置、预设或专有命名。
 
-感谢以下开源项目：
-
-- [ImageMagick](https://imagemagick.org/)
-- [rembg](https://github.com/danielgatis/rembg)
-- [Next.js](https://nextjs.org/)
-- [FastAPI](https://fastapi.tiangolo.com/)
-- [shadcn/ui](https://ui.shadcn.com/)
-- [Tailwind CSS](https://tailwindcss.com/)
+本项目使用 [ImageMagick](https://imagemagick.org/)、[rembg](https://github.com/danielgatis/rembg)、[Next.js](https://nextjs.org/)、[FastAPI](https://fastapi.tiangolo.com/)、[shadcn/ui](https://ui.shadcn.com/) 和 [Tailwind CSS](https://tailwindcss.com/)。
 
 ## 贡献
 
-欢迎提交 Issue 或 Pull Request。请在修改功能或部署说明时，同时更新英文 `README.md` 与中文 `README.zh-CN.md`。
-
+欢迎提交 Issue 和 Pull Request。修改用户可见行为或部署说明时，请保持 `README.md` 与 `README.zh-CN.md` 内容对应。
