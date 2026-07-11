@@ -1,13 +1,10 @@
 # ImageFWX
 
-> English project homepage · [中文说明](README.zh-CN.md)
+> [中文说明](README.zh-CN.md)
 
 ImageFWX is a self-hosted photo-finishing workspace for ImageMagick. It adds a
 visual frame editor, text and image watermarks, batch processing, and a safe
 read-only NAS photo browser to a Next.js, FastAPI, PostgreSQL, and Redis stack.
-
-When user-facing features or deployment instructions change, update this file
-and [README.zh-CN.md](README.zh-CN.md) together.
 
 ## What ImageFWX is for
 
@@ -180,5 +177,4 @@ and [Tailwind CSS](https://tailwindcss.com/).
 
 ## Contributing
 
-Issues and pull requests are welcome. Keep `README.md` and `README.zh-CN.md`
-aligned whenever you change user-visible behavior or deployment guidance.
+Issues and pull requests are welcome.

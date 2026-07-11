@@ -1,10 +1,8 @@
 # ImageFWX
 
-> 中文项目说明 · [English README](README.md)
+> [English README](README.md)
 
 ImageFWX 是一个基于 ImageMagick 的自托管照片成片工作台。它在 Next.js、FastAPI、PostgreSQL 和 Redis 架构上提供可视化边框编辑器、文字与图片水印、批量处理，以及安全的 NAS 只读照片浏览。
-
-用户可见功能或部署说明变更时，必须同时更新本文件和 [README.md](README.md)。
 
 ## ImageFWX 适合做什么
 
@@ -153,4 +151,4 @@ ImageFWX 保留上游 MIT License 和版权声明。相框、NAS 导入和水印
 
 ## 贡献
 
-欢迎提交 Issue 和 Pull Request。修改用户可见行为或部署说明时，请保持 `README.md` 与 `README.zh-CN.md` 内容对应。
+欢迎提交 Issue 和 Pull Request。
