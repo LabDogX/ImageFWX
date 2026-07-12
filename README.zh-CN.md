@@ -64,6 +64,23 @@ docker compose up -d --build
 - Swagger：`http://localhost:8012/docs`
 - ReDoc：`http://localhost:8012/redoc`
 
+## 硬件加速
+
+默认服务仅使用 CPU。背景移除可选用 ONNX Runtime 执行提供器加速；其他图片编辑功能仍由 ImageMagick 处理。
+
+| 硬件 | 状态 | 启动命令 |
+|---|---|---|
+| CPU | 默认 | `docker compose up -d --build` |
+| NVIDIA CUDA | 现有 profile | `docker compose --profile gpu up -d --build app-gpu` |
+| Intel GPU | 实验性 OpenVINO profile | `docker compose --profile intel up -d --build app-intel` |
+| AMD GPU | 实验性提供器集成 | 提供带有 `MIGraphXExecutionProvider` 的 ONNX Runtime 构建，并设置 `ACCELERATOR_PROVIDER=migraphx` |
+
+Intel GPU 加速需要 Linux 主机具备 Intel DRM 设备 `/dev/dri`；`app-intel` 会映射该设备。设置 `OPENVINO_DEVICE=GPU` 可强制使用 GPU，保留 `AUTO` 则由 OpenVINO 自动选择兼容的 Intel 设备；`CPU` 适合诊断使用。Intel NPU 的设备透传取决于主机设备节点，当前 Compose profile 未内置该映射。
+
+同一个 Compose 项目中，`app`、`app-gpu` 与 `app-intel` 一次只能运行一个。上面的命令显式指定目标服务，可避免默认 CPU 服务与加速服务一起启动。
+
+AMD 暂不提供通用 Docker profile。运行时可在提供兼容 AMD ONNX Runtime 构建时选择 `MIGraphXExecutionProvider`，但不同硬件和驱动组合仍需要验证后才能提供通用 ROCm 镜像。
+
 ## NAS / 飞牛部署
 
 Docker-only 部署和 NAS 部署都只使用同一个 `docker-compose.yml`。如需 NAS 导入，在 `.env` 中填写以下内容，再使用普通启动命令：
@@ -104,6 +121,7 @@ NAS 原始照片（只读）
 - 不要发布 PostgreSQL 或 Redis 端口。
 - 首次启动前替换三个必填密钥。
 - ImageMagick 命令基于已验证的操作参数构建，并设有超时和资源限制；图片与 NAS 文件均做 MIME 校验。
+- `ACCELERATOR_PROVIDER` 可选 `auto`、`cpu`、`cuda`、`openvino`、`migraphx`；`OPENVINO_DEVICE` 可选 `AUTO`、`CPU`、`GPU`、`GPU.0`、`GPU.1`、`NPU`。
 
 ## 开发与验证
 

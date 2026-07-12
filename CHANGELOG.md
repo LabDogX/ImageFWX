@@ -8,6 +8,9 @@
   secrets without overwriting an existing configuration.
 - Added Source Han Sans and Source Han Serif watermark options through the
   OFL-licensed Noto CJK font package.
+- Added an experimental multi-accelerator provider selector for CUDA, Intel
+  OpenVINO, and AMD MIGraphX-capable ONNX Runtime builds.
+- Added an Intel OpenVINO Docker Compose profile with an Intel DRM device map.
 - Added an original ImageMagick border operation with independent sides, short-edge percentages, double borders, matte ratios, and backend previews.
 - Added optional read-only NAS browsing and safe copy-based imports to the existing image library.
 - Added text color, font-family selection, and uploaded PNG/JPEG/WebP/SVG image watermarks with safe image-ID resolution.

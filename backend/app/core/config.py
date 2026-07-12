@@ -2,7 +2,7 @@
 Application configuration using Pydantic Settings
 """
 
-from typing import Optional, List
+from typing import Optional, List, Literal
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field, field_validator
 
@@ -67,6 +67,10 @@ class Settings(BaseSettings):
     # causes "Available memory of 0 is smaller than requested bytes". Set a
     # positive value only to hard-cap the arena when sharing the card.
     cuda_gpu_mem_limit: int = 0
+    # `auto` preserves existing CUDA behavior when GPU_ENABLED=true. Explicit
+    # values isolate Intel OpenVINO and AMD MIGraphX deployments from CUDA.
+    accelerator_provider: Literal["auto", "cpu", "cuda", "openvino", "migraphx"] = "auto"
+    openvino_device: Literal["AUTO", "CPU", "GPU", "GPU.0", "GPU.1", "NPU"] = "AUTO"
     
     # Security
     rate_limit: str = "100/minute"

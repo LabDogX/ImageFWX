@@ -58,6 +58,7 @@ class AIService:
         self._rembg_available = None
         self._sessions: dict = {}
         self._gpu_active: Optional[bool] = None
+        self._accelerator_provider: str = "cpu"
 
     async def is_available(self) -> bool:
         """Check if rembg is available"""
@@ -73,36 +74,43 @@ class AIService:
 
     def _resolve_providers(self):
         """
-        Decide ONNX execution providers. Honors settings.force_cpu and
-        settings.gpu_enabled, verifies CUDA is actually present in onnxruntime,
-        and always appends CPUExecutionProvider for graceful fallback.
+        Decide ONNX execution providers. Supports explicit CUDA, Intel OpenVINO,
+        and AMD MIGraphX selection, and always appends CPU for graceful fallback.
         Result cached in self._gpu_active.
         """
         if self._gpu_active is None:
             self._gpu_active = False
 
-            if settings.force_cpu:
+            if settings.force_cpu or settings.accelerator_provider == "cpu":
                 logger.info("FORCE_CPU set — using CPUExecutionProvider only")
-            elif not settings.gpu_enabled:
+            elif settings.accelerator_provider == "auto" and not settings.gpu_enabled:
                 logger.info("GPU_ENABLED is false — CPU-only, using CPUExecutionProvider")
             else:
                 try:
                     import onnxruntime as ort
                     available = ort.get_available_providers()
                     logger.info(f"onnxruntime available providers: {available}")
-                    if "CUDAExecutionProvider" in available:
+                    requested = settings.accelerator_provider
+                    candidates = {
+                        "cuda": ["CUDAExecutionProvider"],
+                        "openvino": ["OpenVINOExecutionProvider"],
+                        "migraphx": ["MIGraphXExecutionProvider"],
+                        "auto": ["CUDAExecutionProvider"],
+                    }[requested]
+                    selected = next((provider for provider in candidates if provider in available), None)
+                    if selected:
                         self._gpu_active = True
-                        logger.info("CUDAExecutionProvider available — GPU acceleration ON")
+                        self._accelerator_provider = selected.replace("ExecutionProvider", "").lower()
+                        logger.info(f"{selected} available — hardware acceleration ON")
                     else:
                         logger.warning(
-                            "GPU_ENABLED=true but CUDAExecutionProvider not available. "
-                            "Check onnxruntime-gpu install and CUDA 12 + cuDNN 9. "
+                            f"Requested accelerator {requested} is unavailable. "
                             "Falling back to CPU."
                         )
                 except Exception as e:
                     logger.error(f"Provider detection failed, falling back to CPU: {e}")
 
-        if self._gpu_active:
+        if self._accelerator_provider == "cuda":
             cuda_opts = {
                 "device_id": 0,
                 "arena_extend_strategy": "kNextPowerOfTwo",
@@ -117,12 +125,16 @@ class AIService:
             if mem_limit > 0:
                 cuda_opts["gpu_mem_limit"] = mem_limit
             return [("CUDAExecutionProvider", cuda_opts), "CPUExecutionProvider"]
+        if self._accelerator_provider == "openvino":
+            return [("OpenVINOExecutionProvider", {"device_type": settings.openvino_device}), "CPUExecutionProvider"]
+        if self._accelerator_provider == "migraphx":
+            return [("MIGraphXExecutionProvider", {"device_id": 0}), "CPUExecutionProvider"]
 
         return ["CPUExecutionProvider"]
 
     def _default_model(self) -> str:
         """On GPU prefer BiRefNet; on CPU respect configured default."""
-        if self._gpu_active:
+        if self._accelerator_provider == "cuda":
             return "birefnet-general"
         return settings.rembg_model
 
@@ -340,6 +352,7 @@ class AIService:
             "max_size": settings.rembg_max_size,
             "gpu_enabled": settings.gpu_enabled,
             "gpu_active": bool(self._gpu_active),
+            "accelerator_provider": self._accelerator_provider,
         }
 
     async def diagnose(self) -> dict:
@@ -352,6 +365,9 @@ class AIService:
             "onnx_threads": settings.onnx_threads,
             "gpu_enabled_setting": settings.gpu_enabled,
             "force_cpu_setting": settings.force_cpu,
+            "accelerator_provider_setting": settings.accelerator_provider,
+            "openvino_device_setting": settings.openvino_device,
+            "accelerator_provider": "cpu",
             "gpu_active": None,
             "onnx_providers": [],
             "onnx_device": None,
@@ -385,6 +401,7 @@ class AIService:
 
         self._resolve_providers()
         info["gpu_active"] = bool(self._gpu_active)
+        info["accelerator_provider"] = self._accelerator_provider
 
         u2net_home = os.environ.get("U2NET_HOME", os.path.expanduser("~/.u2net"))
         info["u2net_home"] = u2net_home

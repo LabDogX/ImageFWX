@@ -180,16 +180,27 @@ python -c "from rembg import new_session; new_session('u2net')"
 - Upscaling: ~500MB RAM
 - Enhance: ~200MB RAM
 
-### GPU Support
+### Hardware Acceleration
 
-Currently CPU-only. GPU support planned for future versions.
+The default image is CPU-only. CUDA is available through the NVIDIA Compose
+profile. The experimental Intel profile uses the OpenVINO ONNX Runtime
+execution provider and maps `/dev/dri` for Intel GPU access. Start it with:
+
+```bash
+docker compose --profile intel up -d --build app-intel
+```
+
+Set `OPENVINO_DEVICE=GPU` to require an Intel GPU, or use `AUTO` to let
+OpenVINO choose a compatible Intel device. The runtime also recognizes
+`MIGraphXExecutionProvider` when a compatible AMD ONNX Runtime build is
+provided; ImageFWX does not currently ship a general-purpose AMD Docker image.
 
 ---
 
 ## Limitations
 
 1. **No batch AI processing** - One image at a time
-2. **CPU only** - No GPU acceleration yet
+2. **Hardware support depends on the selected ONNX Runtime provider and host drivers**
 3. **Size limits** - Images resized to max 2048px for processing
 4. **Model variety** - Only U2-Net model currently
 
@@ -197,7 +208,9 @@ Currently CPU-only. GPU support planned for future versions.
 
 ## Future Roadmap
 
-- [ ] GPU acceleration (CUDA)
+- [x] CUDA acceleration profile
+- [x] Experimental Intel OpenVINO profile
+- [x] AMD MIGraphX provider selection for compatible custom runtime builds
 - [ ] More background removal models
 - [ ] Real-ESRGAN for better upscaling
 - [ ] Face enhancement

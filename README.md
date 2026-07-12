@@ -82,6 +82,35 @@ Default public ports:
 - Swagger UI: `http://localhost:8012/docs`
 - ReDoc: `http://localhost:8012/redoc`
 
+## Hardware acceleration
+
+The default service is CPU-only. Background removal can use an optional ONNX
+Runtime execution provider; all other image editing continues to use
+ImageMagick.
+
+| Hardware | Status | Start command |
+|---|---|---|
+| CPU | Default | `docker compose up -d --build` |
+| NVIDIA CUDA | Existing profile | `docker compose --profile gpu up -d --build app-gpu` |
+| Intel GPU | Experimental OpenVINO profile | `docker compose --profile intel up -d --build app-intel` |
+| AMD GPU | Experimental provider integration | Bring an ONNX Runtime build with `MIGraphXExecutionProvider`, then set `ACCELERATOR_PROVIDER=migraphx` |
+
+For Intel GPU acceleration, use a Linux host with the Intel DRM device exposed
+at `/dev/dri`; the `app-intel` service maps that device. Set
+`OPENVINO_DEVICE=GPU` to require the GPU, or leave `AUTO` to let OpenVINO
+choose a compatible Intel device. `CPU` is useful for diagnosis. Intel NPU
+passthrough depends on the host device node and is not bundled in the Compose
+profile.
+
+Run only one of `app`, `app-gpu`, or `app-intel` against the same Compose
+project at a time. The explicit target-service commands above prevent the
+default CPU service from being started alongside an accelerator service.
+
+AMD deployment intentionally has no bundled Docker profile yet. The runtime
+can select `MIGraphXExecutionProvider` when a compatible AMD ONNX Runtime
+build is supplied, but hardware and driver combinations need validation before
+shipping a general-purpose ROCm image.
+
 ## NAS / Feiniu deployment
 
 ImageFWX uses the same `docker-compose.yml` for Docker-only and NAS setups.
@@ -131,6 +160,9 @@ borders and target canvas dimensions independently.
 - Change all three required secrets before first startup.
 - ImageMagick commands are built from validated operation parameters with
   timeout and resource limits; image and NAS files are MIME-validated.
+- `ACCELERATOR_PROVIDER` accepts `auto`, `cpu`, `cuda`, `openvino`, or
+  `migraphx`. `OPENVINO_DEVICE` accepts `AUTO`, `CPU`, `GPU`, `GPU.0`,
+  `GPU.1`, or `NPU`.
 
 ## Development and verification
 

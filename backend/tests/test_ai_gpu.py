@@ -14,10 +14,11 @@ import importlib
 import pytest
 
 
-def _make_service(monkeypatch, *, gpu_enabled, force_cpu, cuda_present):
+def _make_service(monkeypatch, *, gpu_enabled, force_cpu, cuda_present, accelerator="auto", extra_providers=None):
     """Build a fresh AIService with config + onnxruntime simulated via env/reload."""
     monkeypatch.setenv("GPU_ENABLED", "true" if gpu_enabled else "false")
     monkeypatch.setenv("FORCE_CPU", "true" if force_cpu else "false")
+    monkeypatch.setenv("ACCELERATOR_PROVIDER", accelerator)
 
     from app.core import config
     importlib.reload(config)
@@ -26,6 +27,8 @@ def _make_service(monkeypatch, *, gpu_enabled, force_cpu, cuda_present):
     providers = ["CPUExecutionProvider"]
     if cuda_present:
         providers = ["CUDAExecutionProvider", "CPUExecutionProvider"]
+    if extra_providers:
+        providers = extra_providers + ["CPUExecutionProvider"]
     fake_ort.get_available_providers = lambda: providers
     fake_ort.get_device = lambda: "GPU" if cuda_present else "CPU"
     monkeypatch.setitem(sys.modules, "onnxruntime", fake_ort)
@@ -66,3 +69,25 @@ def test_gpu_enabled_but_cuda_missing_falls_back(monkeypatch):
     providers = svc._resolve_providers()
     assert providers == ["CPUExecutionProvider"]
     assert svc._gpu_active is False
+
+
+def test_openvino_provider_uses_requested_intel_device(monkeypatch):
+    monkeypatch.setenv("OPENVINO_DEVICE", "NPU")
+    svc = _make_service(
+        monkeypatch, gpu_enabled=False, force_cpu=False, cuda_present=False,
+        accelerator="openvino", extra_providers=["OpenVINOExecutionProvider"],
+    )
+    providers = svc._resolve_providers()
+    assert providers == [("OpenVINOExecutionProvider", {"device_type": "NPU"}), "CPUExecutionProvider"]
+    assert svc._accelerator_provider == "openvino"
+    assert svc._default_model() == "isnet-general-use"
+
+
+def test_migraphx_provider_is_detected_without_cuda(monkeypatch):
+    svc = _make_service(
+        monkeypatch, gpu_enabled=False, force_cpu=False, cuda_present=False,
+        accelerator="migraphx", extra_providers=["MIGraphXExecutionProvider"],
+    )
+    providers = svc._resolve_providers()
+    assert providers == [("MIGraphXExecutionProvider", {"device_id": 0}), "CPUExecutionProvider"]
+    assert svc._accelerator_provider == "migraphx"
