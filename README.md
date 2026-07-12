@@ -29,8 +29,9 @@ read-only NAS photo browser to a Next.js, FastAPI, PostgreSQL, and Redis stack.
 ### Watermarks
 
 - Text watermarks with nine-point positioning, opacity, font size, text color,
-  shadow color, and built-in Sans, Serif, Mono, Source Han Sans (思源黑体), or
-  Source Han Serif (思源宋体) fonts.
+  shadow color, and built-in Sans, Serif, Mono, plus Noto/Source Han CJK Sans
+  and Serif choices for Simplified Chinese, Traditional Chinese, Japanese, and
+  Korean. Bold CJK choices are included for titles.
 - Logo and image watermarks selected from existing uploaded PNG, JPEG, WebP, or
   SVG library items. Set scale, opacity, position, and X/Y offsets.
 - Image watermark requests contain an image ID, never a browser-provided server
@@ -160,8 +161,11 @@ ImageFWX retains the upstream MIT License and copyright notices. Its frame,
 NAS-import, and watermark additions are original implementations. It does not
 include Magick Frames source code, assets, configuration, presets, or names.
 
-Source Han Sans and Source Han Serif watermark choices are supplied by the
+The built-in Noto and Source Han watermark choices are supplied by the
 `fonts-noto-cjk` package and are available under the SIL Open Font License 1.1.
+They can be used in commercial and non-commercial projects, but are not sold as
+standalone fonts. No unverified font files from the local LedCover archive are
+bundled into ImageFWX.
 
 Built with [ImageMagick](https://imagemagick.org/),
 [rembg](https://github.com/danielgatis/rembg), [Next.js](https://nextjs.org/),

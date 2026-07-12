@@ -78,6 +78,8 @@ def test_text_and_image_watermark_params_are_strictly_validated():
     assert text.params["font"] == "serif"
     source_han = Operation(operation="watermark", params={"text": "照片", "font": "source-han-sans"})
     assert source_han.params["font"] == "source-han-sans"
+    noto_bold = Operation(operation="watermark", params={"text": "照片", "font": "noto-sans-sc-bold"})
+    assert noto_bold.params["font"] == "noto-sans-sc-bold"
     image = Operation(operation="image-watermark", params={"image_id": 12, "scale": 25, "opacity": 0.5})
     assert image.params["image_id"] == 12
     with pytest.raises(ValidationError):
@@ -97,6 +99,19 @@ async def test_source_han_watermark_uses_server_font_allowlist(tmp_path, monkeyp
         "operation": "watermark", "params": {"text": "照片", "font": "source-han-serif"},
     }])
     assert "-font 'Noto Serif CJK SC'" in command
+
+
+@pytest.mark.asyncio
+async def test_extended_watermark_fonts_use_server_fontconfig_patterns(tmp_path, monkeypatch):
+    from PIL import Image
+    from app.services.imagemagick import ImageMagickService
+    source = tmp_path / "source.png"
+    Image.new("RGB", (1000, 800), "white").save(source)
+    monkeypatch.setattr(ImageMagickService, "_get_magick_cmd", lambda self: __import__("asyncio").sleep(0, result="magick"))
+    command = await ImageMagickService().build_command(str(source), str(tmp_path / "out.png"), [{
+        "operation": "watermark", "params": {"text": "照片", "font": "noto-sans-sc-bold"},
+    }])
+    assert "-font 'Noto Sans CJK SC:style=Bold'" in command
 
 
 @pytest.mark.asyncio

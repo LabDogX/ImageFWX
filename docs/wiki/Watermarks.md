@@ -38,6 +38,20 @@ Watermarks help you:
 
 ## Configuration Options
 
+### Built-in Fonts
+
+The editor exposes a server-side allow-list of DejaVu and Noto/Source Han
+families. In addition to Latin Sans, Serif, and Mono styles, it includes
+Simplified Chinese, Traditional Chinese, Japanese, and Korean Noto CJK Sans and
+Serif choices, with bold Simplified Chinese variants for titles. Font IDs are
+validated by the API and mapped to fixed fontconfig patterns; clients cannot
+submit a font name or file path.
+
+Noto CJK and its Source Han counterpart are distributed under the SIL Open Font
+License 1.1 and may be used in commercial or non-commercial projects, provided
+the fonts are not sold by themselves. ImageFWX does not bundle fonts whose
+license cannot be verified.
+
 ### Text Content
 
 Enter any text:

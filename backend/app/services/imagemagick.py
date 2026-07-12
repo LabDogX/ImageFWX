@@ -21,6 +21,34 @@ TARGET_RATIOS = {
     "2:3": (2, 3), "16:9": (16, 9), "9:16": (9, 16),
 }
 
+# Server-owned font identifiers for text watermarks. Do not accept font names
+# or paths from API clients: ImageMagick resolves fontconfig patterns itself.
+# These families are installed by fonts-dejavu-core and fonts-noto-cjk in every
+# production image. Noto CJK is the Google distribution of Adobe Source Han.
+WATERMARK_FONT_FAMILIES = {
+    "sans": "DejaVu-Sans",
+    "sans-bold": "DejaVu-Sans-Bold",
+    "sans-condensed": "DejaVu-Sans-Condensed",
+    "serif": "DejaVu-Serif",
+    "serif-bold": "DejaVu-Serif-Bold",
+    "serif-italic": "DejaVu-Serif-Italic",
+    "mono": "DejaVu-Sans-Mono",
+    "mono-bold": "DejaVu-Sans-Mono-Bold",
+    # Keep these legacy IDs so existing saved jobs remain compatible.
+    "source-han-sans": "Noto Sans CJK SC",
+    "source-han-serif": "Noto Serif CJK SC",
+    "noto-sans-sc": "Noto Sans CJK SC",
+    "noto-sans-sc-bold": "Noto Sans CJK SC:style=Bold",
+    "noto-serif-sc": "Noto Serif CJK SC",
+    "noto-serif-sc-bold": "Noto Serif CJK SC:style=Bold",
+    "noto-sans-tc": "Noto Sans CJK TC",
+    "noto-serif-tc": "Noto Serif CJK TC",
+    "noto-sans-jp": "Noto Sans CJK JP",
+    "noto-serif-jp": "Noto Serif CJK JP",
+    "noto-sans-kr": "Noto Sans CJK KR",
+    "noto-serif-kr": "Noto Serif CJK KR",
+}
+
 
 def validate_hex_color(value: str) -> bool:
     """Return True only for the supported, shell-safe hexadecimal colors."""
@@ -406,15 +434,9 @@ class ImageMagickService:
                     color = params.get("color", "#FFFFFF")
                     shadow_color = params.get("shadow_color", "#000000")
                     opacity = float(params.get("opacity", 0.5))
-                    font_name = {
-                        "sans": "DejaVu-Sans",
-                        "serif": "DejaVu-Serif",
-                        "mono": "DejaVu-Sans-Mono",
-                        # Installed by the fonts-noto-cjk Debian package. These
-                        # names are fixed server-side rather than client paths.
-                        "source-han-sans": "Noto Sans CJK SC",
-                        "source-han-serif": "Noto Serif CJK SC",
-                    }.get(params.get("font", "sans"), "DejaVu-Sans")
+                    font_name = WATERMARK_FONT_FAMILIES.get(
+                        params.get("font", "sans"), WATERMARK_FONT_FAMILIES["sans"]
+                    )
                     
                     gravity_map = {
                         "northwest": "NorthWest",

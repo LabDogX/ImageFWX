@@ -50,6 +50,16 @@ interface ImageEditorProps {
   onSave: () => void;
 }
 
+type WatermarkFont =
+  | 'sans' | 'sans-bold' | 'sans-condensed'
+  | 'serif' | 'serif-bold' | 'serif-italic'
+  | 'mono' | 'mono-bold'
+  | 'source-han-sans' | 'source-han-serif'
+  | 'noto-sans-sc' | 'noto-sans-sc-bold' | 'noto-serif-sc' | 'noto-serif-sc-bold'
+  | 'noto-sans-tc' | 'noto-serif-tc'
+  | 'noto-sans-jp' | 'noto-serif-jp'
+  | 'noto-sans-kr' | 'noto-serif-kr';
+
 interface EditorState {
   brightness: number;
   contrast: number;
@@ -66,7 +76,7 @@ interface EditorState {
   watermarkOpacity: number;
   watermarkColor: string;
   watermarkShadowColor: string;
-  watermarkFont: 'sans' | 'serif' | 'mono' | 'source-han-sans' | 'source-han-serif';
+  watermarkFont: WatermarkFont;
   watermarkImageId: number | null;
   watermarkImageScale: number;
   watermarkOffsetX: number;
@@ -112,13 +122,51 @@ const defaultState: EditorState = {
   border: defaultBorderSettings,
 };
 
-const watermarkPreviewFonts: Record<EditorState['watermarkFont'], string> = {
+const watermarkPreviewFonts: Record<WatermarkFont, string> = {
   sans: 'Arial, Helvetica, sans-serif',
+  'sans-bold': 'Arial Black, Arial, Helvetica, sans-serif',
+  'sans-condensed': 'Arial Narrow, Arial, Helvetica, sans-serif',
   serif: 'Georgia, serif',
+  'serif-bold': 'Georgia, serif',
+  'serif-italic': 'Georgia, serif',
   mono: 'ui-monospace, monospace',
+  'mono-bold': 'ui-monospace, monospace',
   'source-han-sans': '"Noto Sans CJK SC", "Source Han Sans CN", sans-serif',
   'source-han-serif': '"Noto Serif CJK SC", "Source Han Serif CN", serif',
+  'noto-sans-sc': '"Noto Sans CJK SC", "Source Han Sans CN", sans-serif',
+  'noto-sans-sc-bold': '"Noto Sans CJK SC", "Source Han Sans CN", sans-serif',
+  'noto-serif-sc': '"Noto Serif CJK SC", "Source Han Serif CN", serif',
+  'noto-serif-sc-bold': '"Noto Serif CJK SC", "Source Han Serif CN", serif',
+  'noto-sans-tc': '"Noto Sans CJK TC", "Source Han Sans TC", sans-serif',
+  'noto-serif-tc': '"Noto Serif CJK TC", "Source Han Serif TC", serif',
+  'noto-sans-jp': '"Noto Sans CJK JP", "Source Han Sans JP", sans-serif',
+  'noto-serif-jp': '"Noto Serif CJK JP", "Source Han Serif JP", serif',
+  'noto-sans-kr': '"Noto Sans CJK KR", "Source Han Sans KR", sans-serif',
+  'noto-serif-kr': '"Noto Serif CJK KR", "Source Han Serif KR", serif',
 };
+
+const watermarkFontOptions: ReadonlyArray<{ value: WatermarkFont; label: string }> = [
+  { value: 'sans', label: 'Sans' },
+  { value: 'sans-bold', label: 'Sans Bold' },
+  { value: 'sans-condensed', label: 'Sans Condensed' },
+  { value: 'serif', label: 'Serif' },
+  { value: 'serif-bold', label: 'Serif Bold' },
+  { value: 'serif-italic', label: 'Serif Italic' },
+  { value: 'mono', label: 'Mono' },
+  { value: 'mono-bold', label: 'Mono Bold' },
+  { value: 'source-han-sans', label: 'Source Han Sans / 思源黑体' },
+  { value: 'source-han-serif', label: 'Source Han Serif / 思源宋体' },
+  { value: 'noto-sans-sc', label: 'Noto Sans CJK SC / 简体黑体' },
+  { value: 'noto-sans-sc-bold', label: 'Noto Sans CJK SC Bold / 简体粗黑' },
+  { value: 'noto-serif-sc', label: 'Noto Serif CJK SC / 简体宋体' },
+  { value: 'noto-serif-sc-bold', label: 'Noto Serif CJK SC Bold / 简体粗宋' },
+  { value: 'noto-sans-tc', label: 'Noto Sans CJK TC / 繁體黑體' },
+  { value: 'noto-serif-tc', label: 'Noto Serif CJK TC / 繁體明體' },
+  { value: 'noto-sans-jp', label: 'Noto Sans CJK JP / 日本語ゴシック' },
+  { value: 'noto-serif-jp', label: 'Noto Serif CJK JP / 日本語明朝' },
+  { value: 'noto-sans-kr', label: 'Noto Sans CJK KR / 한국어 고딕' },
+  { value: 'noto-serif-kr', label: 'Noto Serif CJK KR / 한국어 명조' },
+];
 
 export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
   // PDF check
@@ -1208,7 +1256,15 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                     <div className="grid grid-cols-2 gap-2"><Button variant={state.watermarkKind === 'text' ? 'default' : 'outline'} size="sm" onClick={() => setState(s => ({ ...s, watermarkKind: 'text' }))}>Text</Button><Button variant={state.watermarkKind === 'image' ? 'default' : 'outline'} size="sm" onClick={() => setState(s => ({ ...s, watermarkKind: 'image' }))}>Logo / Image</Button></div>
                     {state.watermarkKind === 'text' ? <>
                       <div className="space-y-2"><Label className="text-xs">Watermark Text</Label><Input value={state.watermarkText} onChange={(e) => setState(s => ({ ...s, watermarkText: e.target.value }))} placeholder="Enter watermark..." /></div>
-                      <div className="grid grid-cols-3 gap-2"><label className="text-xs">Font<select className="mt-1 w-full rounded border bg-background p-2" value={state.watermarkFont} onChange={e => setState(s => ({ ...s, watermarkFont: e.target.value as EditorState['watermarkFont'] }))}><option value="sans">Sans</option><option value="serif">Serif</option><option value="mono">Mono</option><option value="source-han-sans">Source Han Sans / 思源黑体</option><option value="source-han-serif">Source Han Serif / 思源宋体</option></select></label><label className="text-xs">Text color<input className="mt-1 h-9 w-full" type="color" value={state.watermarkColor} onChange={e => setState(s => ({ ...s, watermarkColor: e.target.value.toUpperCase() }))} /></label><label className="text-xs">Shadow color<input className="mt-1 h-9 w-full" type="color" value={state.watermarkShadowColor} onChange={e => setState(s => ({ ...s, watermarkShadowColor: e.target.value.toUpperCase() }))} /></label></div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <label className="text-xs">Font
+                          <select className="mt-1 w-full rounded border bg-background p-2" value={state.watermarkFont} onChange={e => setState(s => ({ ...s, watermarkFont: e.target.value as WatermarkFont }))}>
+                            {watermarkFontOptions.map(({ value, label }) => <option value={value} key={value} style={{ fontFamily: watermarkPreviewFonts[value] }}>{label}</option>)}
+                          </select>
+                        </label>
+                        <label className="text-xs">Text color<input className="mt-1 h-9 w-full" type="color" value={state.watermarkColor} onChange={e => setState(s => ({ ...s, watermarkColor: e.target.value.toUpperCase() }))} /></label>
+                        <label className="text-xs">Shadow color<input className="mt-1 h-9 w-full" type="color" value={state.watermarkShadowColor} onChange={e => setState(s => ({ ...s, watermarkShadowColor: e.target.value.toUpperCase() }))} /></label>
+                      </div>
                     </> : <div className="space-y-3 rounded border p-3"><Label className="text-xs">Use an uploaded PNG, JPEG, WebP, or SVG as a logo/image watermark</Label><select className="w-full rounded border bg-background p-2 text-sm" value={state.watermarkImageId ?? ''} onChange={e => setState(s => ({ ...s, watermarkImageId: e.target.value ? Number(e.target.value) : null }))}><option value="">Select an uploaded image</option>{libraryImages.filter(candidate => candidate.id !== currentImageId && candidate.mimeType.startsWith('image/')).map(candidate => <option value={candidate.id} key={candidate.id}>{candidate.originalFilename}</option>)}</select><label className="text-xs">Scale: {state.watermarkImageScale}% of short edge<Slider className="mt-2" value={[state.watermarkImageScale]} min={1} max={100} step={1} onValueChange={([value]) => setState(s => ({ ...s, watermarkImageScale: value }))} /></label><div className="grid grid-cols-2 gap-2"><label className="text-xs">X offset<Input type="number" min="0" value={state.watermarkOffsetX} onChange={e => setState(s => ({ ...s, watermarkOffsetX: Number(e.target.value) || 0 }))} /></label><label className="text-xs">Y offset<Input type="number" min="0" value={state.watermarkOffsetY} onChange={e => setState(s => ({ ...s, watermarkOffsetY: Number(e.target.value) || 0 }))} /></label></div></div>}
                     <div className="space-y-2">
                       <Label className="text-xs">Position</Label>

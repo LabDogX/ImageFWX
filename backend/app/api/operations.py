@@ -18,7 +18,7 @@ from app.core.config import settings
 from app.models.user import User
 from app.models.image import Image
 from app.models.job import Job, JobStatus
-from app.services.imagemagick import imagemagick_service
+from app.services.imagemagick import WATERMARK_FONT_FAMILIES, imagemagick_service
 from app.services.queue_service import queue_service
 from app.workers.tasks import process_images, process_raw_command
 
@@ -89,7 +89,7 @@ class WatermarkParams(BaseModel):
     color: str = "#FFFFFF"
     shadow_color: str = "#000000"
     # These identifiers are an allow-list, never font paths supplied by clients.
-    font: Literal["sans", "serif", "mono", "source-han-sans", "source-han-serif"] = "sans"
+    font: str = Field("sans", min_length=1, max_length=64)
 
     @field_validator("color", "shadow_color")
     @classmethod
@@ -98,6 +98,13 @@ class WatermarkParams(BaseModel):
         if not validate_hex_color(value):
             raise ValueError("Color must be #RGB, #RRGGBB, or #RRGGBBAA")
         return value.upper()
+
+    @field_validator("font")
+    @classmethod
+    def watermark_font_allowlist(cls, value: str) -> str:
+        if value not in WATERMARK_FONT_FAMILIES:
+            raise ValueError("Unsupported watermark font")
+        return value
 
 
 class ImageWatermarkParams(BaseModel):

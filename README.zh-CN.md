@@ -22,7 +22,7 @@ ImageFWX 是一个基于 ImageMagick 的自托管照片成片工作台。它在 
 
 ### 水印
 
-- 文字水印支持九宫格位置、不透明度、字号、文字颜色、阴影颜色，以及 Sans、Serif、Mono、思源黑体、思源宋体。
+- 文字水印支持九宫格位置、不透明度、字号、文字颜色、阴影颜色，以及 Sans、Serif、Mono、Noto/思源 CJK 字体；可选简体、繁体、日文、韩文与 CJK 粗体标题样式。
 - Logo/图片水印可从已上传的 PNG、JPEG、WebP 或 SVG 图片库项中选择，可设置缩放、不透明度、位置和 X/Y 偏移。
 - 图片水印请求只包含图片 ID，不接受浏览器提交服务器文件路径；后端验证访问权限后再解析内部路径。
 
@@ -131,7 +131,7 @@ npm audit
 
 ImageFWX 保留上游 MIT License 和版权声明。相框、NAS 导入和水印增强均为原创实现；不包含 Magick Frames 的源码、素材、配置、预设或专有命名。
 
-思源黑体和思源宋体水印选项由 `fonts-noto-cjk` 包提供，遵循 SIL Open Font License 1.1。
+内置 Noto 与思源系列水印字体由 `fonts-noto-cjk` 包提供，遵循 SIL Open Font License 1.1。它们可用于商业和非商业项目，但不得作为独立字体出售；ImageFWX 不会打包 LedCover 本地字体档案中许可证无法核验的字体文件。
 
 本项目使用 [ImageMagick](https://imagemagick.org/)、[rembg](https://github.com/danielgatis/rembg)、[Next.js](https://nextjs.org/)、[FastAPI](https://fastapi.tiangolo.com/)、[shadcn/ui](https://ui.shadcn.com/) 和 [Tailwind CSS](https://tailwindcss.com/)。
 
