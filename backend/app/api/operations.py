@@ -88,7 +88,8 @@ class WatermarkParams(BaseModel):
     opacity: float = Field(0.5, ge=0.1, le=1.0)
     color: str = "#FFFFFF"
     shadow_color: str = "#000000"
-    font: Literal["sans", "serif", "mono"] = "sans"
+    # These identifiers are an allow-list, never font paths supplied by clients.
+    font: Literal["sans", "serif", "mono", "source-han-sans", "source-han-serif"] = "sans"
 
     @field_validator("color", "shadow_color")
     @classmethod

@@ -66,7 +66,7 @@ interface EditorState {
   watermarkOpacity: number;
   watermarkColor: string;
   watermarkShadowColor: string;
-  watermarkFont: 'sans' | 'serif' | 'mono';
+  watermarkFont: 'sans' | 'serif' | 'mono' | 'source-han-sans' | 'source-han-serif';
   watermarkImageId: number | null;
   watermarkImageScale: number;
   watermarkOffsetX: number;
@@ -110,6 +110,14 @@ const defaultState: EditorState = {
   resizeFit: 'contain',
   keepAspectRatio: true,
   border: defaultBorderSettings,
+};
+
+const watermarkPreviewFonts: Record<EditorState['watermarkFont'], string> = {
+  sans: 'Arial, Helvetica, sans-serif',
+  serif: 'Georgia, serif',
+  mono: 'ui-monospace, monospace',
+  'source-han-sans': '"Noto Sans CJK SC", "Source Han Sans CN", sans-serif',
+  'source-han-serif': '"Noto Serif CJK SC", "Source Han Serif CN", serif',
 };
 
 export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
@@ -899,7 +907,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                     )}
                     style={{ 
                       fontSize: `${Math.max(10, state.watermarkFontSize * zoom)}px`,
-                      fontFamily: state.watermarkFont === 'serif' ? 'Georgia, serif' : state.watermarkFont === 'mono' ? 'ui-monospace, monospace' : 'Arial, Helvetica, sans-serif',
+                      fontFamily: watermarkPreviewFonts[state.watermarkFont],
                       fontWeight: 'normal',
                       color: state.watermarkColor,
                       opacity: state.watermarkOpacity / 100,
@@ -1200,7 +1208,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                     <div className="grid grid-cols-2 gap-2"><Button variant={state.watermarkKind === 'text' ? 'default' : 'outline'} size="sm" onClick={() => setState(s => ({ ...s, watermarkKind: 'text' }))}>Text</Button><Button variant={state.watermarkKind === 'image' ? 'default' : 'outline'} size="sm" onClick={() => setState(s => ({ ...s, watermarkKind: 'image' }))}>Logo / Image</Button></div>
                     {state.watermarkKind === 'text' ? <>
                       <div className="space-y-2"><Label className="text-xs">Watermark Text</Label><Input value={state.watermarkText} onChange={(e) => setState(s => ({ ...s, watermarkText: e.target.value }))} placeholder="Enter watermark..." /></div>
-                      <div className="grid grid-cols-3 gap-2"><label className="text-xs">Font<select className="mt-1 w-full rounded border bg-background p-2" value={state.watermarkFont} onChange={e => setState(s => ({ ...s, watermarkFont: e.target.value as EditorState['watermarkFont'] }))}><option value="sans">Sans</option><option value="serif">Serif</option><option value="mono">Mono</option></select></label><label className="text-xs">Text color<input className="mt-1 h-9 w-full" type="color" value={state.watermarkColor} onChange={e => setState(s => ({ ...s, watermarkColor: e.target.value.toUpperCase() }))} /></label><label className="text-xs">Shadow color<input className="mt-1 h-9 w-full" type="color" value={state.watermarkShadowColor} onChange={e => setState(s => ({ ...s, watermarkShadowColor: e.target.value.toUpperCase() }))} /></label></div>
+                      <div className="grid grid-cols-3 gap-2"><label className="text-xs">Font<select className="mt-1 w-full rounded border bg-background p-2" value={state.watermarkFont} onChange={e => setState(s => ({ ...s, watermarkFont: e.target.value as EditorState['watermarkFont'] }))}><option value="sans">Sans</option><option value="serif">Serif</option><option value="mono">Mono</option><option value="source-han-sans">Source Han Sans / 思源黑体</option><option value="source-han-serif">Source Han Serif / 思源宋体</option></select></label><label className="text-xs">Text color<input className="mt-1 h-9 w-full" type="color" value={state.watermarkColor} onChange={e => setState(s => ({ ...s, watermarkColor: e.target.value.toUpperCase() }))} /></label><label className="text-xs">Shadow color<input className="mt-1 h-9 w-full" type="color" value={state.watermarkShadowColor} onChange={e => setState(s => ({ ...s, watermarkShadowColor: e.target.value.toUpperCase() }))} /></label></div>
                     </> : <div className="space-y-3 rounded border p-3"><Label className="text-xs">Use an uploaded PNG, JPEG, WebP, or SVG as a logo/image watermark</Label><select className="w-full rounded border bg-background p-2 text-sm" value={state.watermarkImageId ?? ''} onChange={e => setState(s => ({ ...s, watermarkImageId: e.target.value ? Number(e.target.value) : null }))}><option value="">Select an uploaded image</option>{libraryImages.filter(candidate => candidate.id !== currentImageId && candidate.mimeType.startsWith('image/')).map(candidate => <option value={candidate.id} key={candidate.id}>{candidate.originalFilename}</option>)}</select><label className="text-xs">Scale: {state.watermarkImageScale}% of short edge<Slider className="mt-2" value={[state.watermarkImageScale]} min={1} max={100} step={1} onValueChange={([value]) => setState(s => ({ ...s, watermarkImageScale: value }))} /></label><div className="grid grid-cols-2 gap-2"><label className="text-xs">X offset<Input type="number" min="0" value={state.watermarkOffsetX} onChange={e => setState(s => ({ ...s, watermarkOffsetX: Number(e.target.value) || 0 }))} /></label><label className="text-xs">Y offset<Input type="number" min="0" value={state.watermarkOffsetY} onChange={e => setState(s => ({ ...s, watermarkOffsetY: Number(e.target.value) || 0 }))} /></label></div></div>}
                     <div className="space-y-2">
                       <Label className="text-xs">Position</Label>

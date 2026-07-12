@@ -22,7 +22,7 @@ ImageFWX 是一个基于 ImageMagick 的自托管照片成片工作台。它在 
 
 ### 水印
 
-- 文字水印支持九宫格位置、不透明度、字号、文字颜色、阴影颜色和内置 Sans、Serif、Mono 字体。
+- 文字水印支持九宫格位置、不透明度、字号、文字颜色、阴影颜色，以及 Sans、Serif、Mono、思源黑体、思源宋体。
 - Logo/图片水印可从已上传的 PNG、JPEG、WebP 或 SVG 图片库项中选择，可设置缩放、不透明度、位置和 X/Y 偏移。
 - 图片水印请求只包含图片 ID，不接受浏览器提交服务器文件路径；后端验证访问权限后再解析内部路径。
 
@@ -43,18 +43,7 @@ ImageFWX 是一个基于 ImageMagick 的自托管照片成片工作台。它在 
 ```bash
 git clone https://github.com/LabDogX/ImageFWX.git
 cd ImageFWX
-cp .env.example .env
-```
-
-启动前在 `.env` 填写：
-
-```env
-SECRET_KEY=<openssl rand -hex 32>
-JWT_SECRET=<openssl rand -hex 32>
-POSTGRES_PASSWORD=<随机且 URL 安全的密码>
-ALLOWED_ORIGINS=https://你的域名
-REQUIRE_LOGIN=true
-ALLOW_REGISTRATION=false
+./scripts/setup.sh
 ```
 
 构建并启动 CPU 服务：
@@ -62,6 +51,8 @@ ALLOW_REGISTRATION=false
 ```bash
 docker compose up -d --build
 ```
+
+初始化脚本不会覆盖已有 `.env`。如使用公开域名，请在启动前将 `ALLOWED_ORIGINS` 改为 `https://你的域名`。脚本会为创建首个账号临时开启注册；创建完成后应立即设置 `ALLOW_REGISTRATION=false`。
 
 默认外部端口：
 
@@ -75,30 +66,23 @@ docker compose up -d --build
 
 ## NAS / 飞牛部署
 
-复制覆盖配置，将示例路径替换为实际 NAS 路径，然后使用两份 Compose 配置启动：
+Docker-only 部署和 NAS 部署都只使用同一个 `docker-compose.yml`。如需 NAS 导入，在 `.env` 中填写以下内容，再使用普通启动命令：
 
-```bash
-cp docker-compose.nas.example.yml docker-compose.nas.yml
-docker compose -f docker-compose.yml -f docker-compose.nas.yml up -d --build
+```env
+NAS_BROWSER_ENABLED=true
+UPLOADS_STORAGE="/vol1/1000/Docker/ImageFWX/uploads"
+PROCESSED_STORAGE="/vol1/1000/照片处理结果"
+TEMP_STORAGE="/vol1/1000/Docker/ImageFWX/temp"
+NAS_SOURCE_STORAGE="/vol1/1000/照片"
 ```
 
-挂载示例：
-
-```yaml
-services:
-  app:
-    volumes:
-      - "/vol1/1000/Docker/imagemagick-webui/uploads:/app/uploads"
-      - "/vol1/1000/照片处理结果:/app/processed"
-      - "/vol1/1000/Docker/imagemagick-webui/temp:/tmp/imagemagick"
-      - "/vol1/1000/照片:/mnt/photos:ro"
-    environment:
-      NAS_BROWSER_ENABLED: "true"
-      NAS_SOURCE_DIR: /mnt/photos
-      NAS_MAX_IMPORT_FILES: "100"
+```bash
+docker compose up -d --build
 ```
 
 容器以 UID/GID `10001` 运行。请为主机的 `uploads`、`processed` 和 `temp` 目录授予该身份写权限；原始照片目录必须保持只读挂载，且绝不能把 `/app/processed` 映射到该目录。
+
+如需域名或 HTTPS，请用 Nginx Proxy Manager、Caddy、Traefik 或已有反向代理转发 Web 界面端口，并将 `ALLOWED_ORIGINS` 设置为公开的 HTTPS 域名；不再需要第二份 ImageFWX Compose 配置。
 
 ## 处理工作流
 
@@ -146,6 +130,8 @@ npm audit
 ## 许可证与鸣谢
 
 ImageFWX 保留上游 MIT License 和版权声明。相框、NAS 导入和水印增强均为原创实现；不包含 Magick Frames 的源码、素材、配置、预设或专有命名。
+
+思源黑体和思源宋体水印选项由 `fonts-noto-cjk` 包提供，遵循 SIL Open Font License 1.1。
 
 本项目使用 [ImageMagick](https://imagemagick.org/)、[rembg](https://github.com/danielgatis/rembg)、[Next.js](https://nextjs.org/)、[FastAPI](https://fastapi.tiangolo.com/)、[shadcn/ui](https://ui.shadcn.com/) 和 [Tailwind CSS](https://tailwindcss.com/)。
 

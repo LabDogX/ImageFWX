@@ -35,9 +35,12 @@ services:
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
     volumes:
-      - uploads:/app/uploads
-      - processed:/app/processed
-      - temp:/tmp/imagemagick
+      # Keep the defaults as Docker-managed volumes. In .env, each source can
+      # instead be an absolute host path for a NAS bind mount.
+      - ${UPLOADS_STORAGE:-uploads}:/app/uploads
+      - ${PROCESSED_STORAGE:-processed}:/app/processed
+      - ${TEMP_STORAGE:-temp}:/tmp/imagemagick
+      - ${NAS_SOURCE_STORAGE:-nas_source}:/mnt/photos:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -102,9 +105,10 @@ services:
       - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES:-all}
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
     volumes:
-      - uploads:/app/uploads
-      - processed:/app/processed
-      - temp:/tmp/imagemagick
+      - ${UPLOADS_STORAGE:-uploads}:/app/uploads
+      - ${PROCESSED_STORAGE:-processed}:/app/processed
+      - ${TEMP_STORAGE:-temp}:/tmp/imagemagick
+      - ${NAS_SOURCE_STORAGE:-nas_source}:/mnt/photos:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -159,6 +163,7 @@ volumes:
   uploads:
   processed:
   temp:
+  nas_source:
 
 networks:
   default:

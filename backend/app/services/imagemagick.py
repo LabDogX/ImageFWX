@@ -406,7 +406,15 @@ class ImageMagickService:
                     color = params.get("color", "#FFFFFF")
                     shadow_color = params.get("shadow_color", "#000000")
                     opacity = float(params.get("opacity", 0.5))
-                    font_name = {"sans": "DejaVu-Sans", "serif": "DejaVu-Serif", "mono": "DejaVu-Sans-Mono"}.get(params.get("font", "sans"), "DejaVu-Sans")
+                    font_name = {
+                        "sans": "DejaVu-Sans",
+                        "serif": "DejaVu-Serif",
+                        "mono": "DejaVu-Sans-Mono",
+                        # Installed by the fonts-noto-cjk Debian package. These
+                        # names are fixed server-side rather than client paths.
+                        "source-han-sans": "Noto Sans CJK SC",
+                        "source-han-serif": "Noto Serif CJK SC",
+                    }.get(params.get("font", "sans"), "DejaVu-Sans")
                     
                     gravity_map = {
                         "northwest": "NorthWest",

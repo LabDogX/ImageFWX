@@ -2,9 +2,8 @@
 
 ## Table of Contents
 - [Quick Start](#quick-start)
-- [Option 1: Pre-built Image](#option-1-pre-built-image-recommended)
-- [Option 2: Build from Source](#option-2-build-from-source)
 - [Changing Ports](#changing-ports)
+- [NAS Photo Browser](#nas-photo-browser-optional)
 - [Configuration](#configuration)
 - [Reverse Proxy Setup](#reverse-proxy-setup)
 - [Production Deployment](#production-deployment)
@@ -13,87 +12,37 @@
 
 ## Quick Start
 
-The fastest way to get started:
+ImageFWX has one deployment path and one Compose file:
+
 ```bash
-mkdir imagemagick-webgui && cd imagemagick-webgui
-curl -O https://raw.githubusercontent.com/PrzemekSkw/imagemagick-webui/main/docker-compose.example.yml
-mv docker-compose.example.yml docker-compose.yml
-docker compose up -d
+git clone https://github.com/LabDogX/ImageFWX.git
+cd ImageFWX
+./scripts/setup.sh
+docker compose up -d --build
 ```
 
-Access: http://localhost:3000
-
----
-
-## Option 1: Pre-built Image (Recommended)
-
-**Best for:** Production use, quick testing, no development
-
-**Steps:**
-```bash
-mkdir imagemagick-webgui && cd imagemagick-webgui
-curl -O https://raw.githubusercontent.com/PrzemekSkw/imagemagick-webui/main/docker-compose.example.yml
-mv docker-compose.example.yml docker-compose.yml
-docker compose up -d
-```
-
-**Advantages:**
-- ✅ No build time (starts in ~30 seconds)
-- ✅ Smaller download
-- ✅ Production-ready
-
-**Default configuration:**
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8000
-- No authentication required
-- 100MB max upload
-
----
-
-## Option 2: Build from Source
-
-**Best for:** Development, customization, contributing
-
-**Steps:**
-```bash
-git clone https://github.com/PrzemekSkw/imagemagick-webui.git
-cd imagemagick-webgui
-cp .env.example .env
-nano .env  # Optional: customize settings
-docker compose up -d
-```
-
-**Advantages:**
-- ✅ Full source code
-- ✅ Easy customization
-- ✅ Can contribute changes
-
-**Build time:** ~5-10 minutes (first time)
+Access the Web UI at `http://localhost:3012` by default.
+The setup script generates secrets and does not overwrite an existing `.env`.
+For a public domain, set `ALLOWED_ORIGINS` to the HTTPS origin before starting.
+It enables registration for the first account; set `ALLOW_REGISTRATION=false`
+after that account has been created.
 
 ---
 
 ## Changing Ports
 
-### If using Option 1 (pre-built image):
+Edit these values in `.env`, then rebuild the frontend:
 
-**Edit `docker-compose.yml`:**
-
-Find and change these lines:
-```yaml
-    ports:
-      - "3012:3000"  # ← Change "3012" to your desired frontend port
-      - "8012:8000"  # ← Change "8012" to your desired backend port
-    environment:
-      - NEXT_PUBLIC_API_PORT=8012  # ← MUST match backend port above
+```env
+FRONTEND_PORT=3012
+BACKEND_PORT=8012
+NEXT_PUBLIC_API_PORT=8012
 ```
 
-**Then restart:**
 ```bash
 docker compose down
-docker compose up -d
+docker compose up -d --build
 ```
-
-**Note:** No rebuild needed when using pre-built image!
 
 ---
 
@@ -102,49 +51,29 @@ docker compose up -d
 The NAS browser is off by default and is designed for import-by-copy: originals
 remain read-only under `/mnt/photos`, while imports become ordinary application
 uploads and processed results go to a different writable directory. On Feiniu
-NAS, use quoted Chinese paths and never mount the source as writable:
+NAS, configure the storage variables in `.env`. Use quoted Chinese paths and
+never point the processed output to the original-photo directory:
 
-```yaml
-services:
-  app:
-    volumes:
-      - "/vol1/1000/Docker/imagemagick-webui/uploads:/app/uploads"
-      - "/vol1/1000/照片处理结果:/app/processed"
-      - "/vol1/1000/Docker/imagemagick-webui/temp:/tmp/imagemagick"
-      - "/vol1/1000/照片:/mnt/photos:ro"
-    environment:
-      - NAS_BROWSER_ENABLED=true
-      - NAS_SOURCE_DIR=/mnt/photos
-      - NAS_MAX_IMPORT_FILES=100
-      - REQUIRE_LOGIN=true
-      - ALLOW_REGISTRATION=false
+```env
+NAS_BROWSER_ENABLED=true
+UPLOADS_STORAGE="/vol1/1000/Docker/ImageFWX/uploads"
+PROCESSED_STORAGE="/vol1/1000/照片处理结果"
+TEMP_STORAGE="/vol1/1000/Docker/ImageFWX/temp"
+NAS_SOURCE_STORAGE="/vol1/1000/照片"
+```
+
+Then use the same command as every other deployment:
+
+```bash
+docker compose up -d --build
 ```
 
 Do not point `/app/processed` at the original-photo directory. Change the
 default `SECRET_KEY` and `JWT_SECRET` before exposing the application.
 The image runs as UID/GID `10001`; grant that identity write access to the
 three writable host directories before starting it (the source directory stays
-read-only).
-
----
-
-### If using Option 2 (built from source):
-
-**Edit `.env`:**
-```env
-FRONTEND_PORT=3012
-BACKEND_PORT=8012
-NEXT_PUBLIC_API_PORT=8012  # Must match BACKEND_PORT
-```
-
-**Then rebuild:**
-```bash
-docker compose down
-docker compose build --no-cache
-docker compose up -d
-```
-
-**Why rebuild?** The `NEXT_PUBLIC_API_PORT` is baked into the frontend at build time.
+read-only). For a domain and HTTPS, use your existing reverse proxy and set
+`ALLOWED_ORIGINS` to the public HTTPS origin.
 
 ---
 
@@ -362,6 +291,6 @@ environment:
 
 ## Support
 
-- 🐛 [Report Issues](https://github.com/PrzemekSkw/imagemagick-webui/issues)
-- 💬 [Discussions](https://github.com/PrzemekSkw/imagemagick-webui/discussions)
-- 📖 [Documentation](https://github.com/PrzemekSkw/imagemagick-webui/wiki)
+- 🐛 [Report Issues](https://github.com/LabDogX/ImageFWX/issues)
+- 💬 [Discussions](https://github.com/LabDogX/ImageFWX/discussions)
+- 📖 [Documentation](https://github.com/LabDogX/ImageFWX/wiki)

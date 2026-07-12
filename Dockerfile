@@ -68,6 +68,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ghostscript \
     poppler-utils \
     fonts-dejavu-core \
+    fonts-noto-cjk \
     libpq5 \
     libmagic1 \
     curl \

@@ -29,7 +29,8 @@ read-only NAS photo browser to a Next.js, FastAPI, PostgreSQL, and Redis stack.
 ### Watermarks
 
 - Text watermarks with nine-point positioning, opacity, font size, text color,
-  shadow color, and built-in Sans, Serif, or Mono fonts.
+  shadow color, and built-in Sans, Serif, Mono, Source Han Sans (思源黑体), or
+  Source Han Serif (思源宋体) fonts.
 - Logo and image watermarks selected from existing uploaded PNG, JPEG, WebP, or
   SVG library items. Set scale, opacity, position, and X/Y offsets.
 - Image watermark requests contain an image ID, never a browser-provided server
@@ -57,18 +58,7 @@ read-only NAS photo browser to a Next.js, FastAPI, PostgreSQL, and Redis stack.
 ```bash
 git clone https://github.com/LabDogX/ImageFWX.git
 cd ImageFWX
-cp .env.example .env
-```
-
-Set these values in `.env` before starting:
-
-```env
-SECRET_KEY=<openssl rand -hex 32>
-JWT_SECRET=<openssl rand -hex 32>
-POSTGRES_PASSWORD=<random URL-safe password>
-ALLOWED_ORIGINS=https://your-domain.example
-REQUIRE_LOGIN=true
-ALLOW_REGISTRATION=false
+./scripts/setup.sh
 ```
 
 Build and start the CPU service:
@@ -76,6 +66,11 @@ Build and start the CPU service:
 ```bash
 docker compose up -d --build
 ```
+
+The setup script never replaces an existing `.env`. For a public domain, set
+`ALLOWED_ORIGINS=https://your-domain.example` before starting. It enables
+registration for the first account; set `ALLOW_REGISTRATION=false` immediately
+after that account is created.
 
 Default public ports:
 
@@ -89,33 +84,28 @@ Default public ports:
 
 ## NAS / Feiniu deployment
 
-Copy the override, replace the example paths with your NAS paths, and start
-with both Compose files:
+ImageFWX uses the same `docker-compose.yml` for Docker-only and NAS setups.
+For NAS import, set these values in `.env`, then run the normal start command:
 
-```bash
-cp docker-compose.nas.example.yml docker-compose.nas.yml
-docker compose -f docker-compose.yml -f docker-compose.nas.yml up -d --build
+```env
+NAS_BROWSER_ENABLED=true
+UPLOADS_STORAGE="/vol1/1000/Docker/ImageFWX/uploads"
+PROCESSED_STORAGE="/vol1/1000/照片处理结果"
+TEMP_STORAGE="/vol1/1000/Docker/ImageFWX/temp"
+NAS_SOURCE_STORAGE="/vol1/1000/照片"
 ```
 
-Example mounts:
-
-```yaml
-services:
-  app:
-    volumes:
-      - "/vol1/1000/Docker/imagemagick-webui/uploads:/app/uploads"
-      - "/vol1/1000/照片处理结果:/app/processed"
-      - "/vol1/1000/Docker/imagemagick-webui/temp:/tmp/imagemagick"
-      - "/vol1/1000/照片:/mnt/photos:ro"
-    environment:
-      NAS_BROWSER_ENABLED: "true"
-      NAS_SOURCE_DIR: /mnt/photos
-      NAS_MAX_IMPORT_FILES: "100"
+```bash
+docker compose up -d --build
 ```
 
 The container runs as UID/GID `10001`. Grant that identity write access to the
 host `uploads`, `processed`, and `temp` directories. Keep the original-photo
 mount read-only and never map `/app/processed` to it.
+
+For a domain or HTTPS, place Nginx Proxy Manager, Caddy, Traefik, or an
+existing reverse proxy in front of the Web UI port. Set `ALLOWED_ORIGINS` to
+the public HTTPS origin; no second ImageFWX Compose file is needed.
 
 ## Processing workflow
 
@@ -169,6 +159,9 @@ npm audit
 ImageFWX retains the upstream MIT License and copyright notices. Its frame,
 NAS-import, and watermark additions are original implementations. It does not
 include Magick Frames source code, assets, configuration, presets, or names.
+
+Source Han Sans and Source Han Serif watermark choices are supplied by the
+`fonts-noto-cjk` package and are available under the SIL Open Font License 1.1.
 
 Built with [ImageMagick](https://imagemagick.org/),
 [rembg](https://github.com/danielgatis/rembg), [Next.js](https://nextjs.org/),
