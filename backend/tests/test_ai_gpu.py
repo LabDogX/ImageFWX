@@ -84,10 +84,20 @@ def test_openvino_provider_uses_requested_intel_device(monkeypatch):
 
 
 def test_migraphx_provider_is_detected_without_cuda(monkeypatch):
+    monkeypatch.setenv("MIGRAPHX_DEVICE_ID", "2")
     svc = _make_service(
         monkeypatch, gpu_enabled=False, force_cpu=False, cuda_present=False,
         accelerator="migraphx", extra_providers=["MIGraphXExecutionProvider"],
     )
     providers = svc._resolve_providers()
-    assert providers == [("MIGraphXExecutionProvider", {"device_id": 0}), "CPUExecutionProvider"]
+    assert providers == [("MIGraphXExecutionProvider", {"device_id": 2}), "CPUExecutionProvider"]
     assert svc._accelerator_provider == "migraphx"
+
+
+def test_migraphx_missing_falls_back_to_cpu(monkeypatch):
+    svc = _make_service(
+        monkeypatch, gpu_enabled=False, force_cpu=False, cuda_present=False,
+        accelerator="migraphx",
+    )
+    assert svc._resolve_providers() == ["CPUExecutionProvider"]
+    assert svc._accelerator_provider == "cpu"

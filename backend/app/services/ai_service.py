@@ -128,7 +128,7 @@ class AIService:
         if self._accelerator_provider == "openvino":
             return [("OpenVINOExecutionProvider", {"device_type": settings.openvino_device}), "CPUExecutionProvider"]
         if self._accelerator_provider == "migraphx":
-            return [("MIGraphXExecutionProvider", {"device_id": 0}), "CPUExecutionProvider"]
+            return [("MIGraphXExecutionProvider", {"device_id": settings.migraphx_device_id}), "CPUExecutionProvider"]
 
         return ["CPUExecutionProvider"]
 
@@ -367,6 +367,7 @@ class AIService:
             "force_cpu_setting": settings.force_cpu,
             "accelerator_provider_setting": settings.accelerator_provider,
             "openvino_device_setting": settings.openvino_device,
+            "migraphx_device_id_setting": settings.migraphx_device_id,
             "accelerator_provider": "cpu",
             "gpu_active": None,
             "onnx_providers": [],

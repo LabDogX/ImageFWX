@@ -93,7 +93,7 @@ ImageMagick.
 | CPU | Default | `docker compose up -d --build` |
 | NVIDIA CUDA | Existing profile | `docker compose --profile gpu up -d --build app-gpu` |
 | Intel GPU | Experimental OpenVINO profile | `docker compose --profile intel up -d --build app-intel` |
-| AMD GPU | Experimental provider integration | Bring an ONNX Runtime build with `MIGraphXExecutionProvider`, then set `ACCELERATOR_PROVIDER=migraphx` |
+| AMD GPU | Experimental MIGraphX profile | `docker compose --profile amd up -d --build app-amd` |
 
 For Intel GPU acceleration, use a Linux host with the Intel DRM device exposed
 at `/dev/dri`; the `app-intel` service maps that device. Set
@@ -106,10 +106,33 @@ Run only one of `app`, `app-gpu`, or `app-intel` against the same Compose
 project at a time. The explicit target-service commands above prevent the
 default CPU service from being started alongside an accelerator service.
 
-AMD deployment intentionally has no bundled Docker profile yet. The runtime
-can select `MIGraphXExecutionProvider` when a compatible AMD ONNX Runtime
-build is supplied, but hardware and driver combinations need validation before
-shipping a general-purpose ROCm image.
+AMD acceleration uses the MIGraphX execution provider on Linux x86_64 hosts
+with a ROCm-supported AMD GPU and driver. Before starting, confirm the host
+can access `/dev/kfd` and `/dev/dri`, then set the matching numeric group IDs
+in `.env`:
+
+```bash
+stat -c '%g' /dev/kfd
+stat -c '%g' /dev/dri/renderD128
+```
+
+```env
+AMD_VIDEO_GID=<group ID for /dev/kfd>
+AMD_RENDER_GID=<group ID for /dev/dri/renderD128>
+MIGRAPHX_DEVICE_ID=0
+ROCR_VISIBLE_DEVICES=0
+```
+
+The AMD image is large because it includes ROCm and MIGraphX. It uses only
+device mappings and groups; it does not request privileged mode, an unconfined
+seccomp profile, or `SYS_PTRACE`. The first model execution can take longer
+while MIGraphX compiles the graph.
+
+Verify that the container selected MIGraphX after startup:
+
+```bash
+docker compose --profile amd exec app-amd /verify-amd-acceleration.sh
+```
 
 ## NAS / Feiniu deployment
 
@@ -163,6 +186,7 @@ borders and target canvas dimensions independently.
 - `ACCELERATOR_PROVIDER` accepts `auto`, `cpu`, `cuda`, `openvino`, or
   `migraphx`. `OPENVINO_DEVICE` accepts `AUTO`, `CPU`, `GPU`, `GPU.0`,
   `GPU.1`, or `NPU`.
+- `MIGRAPHX_DEVICE_ID` selects the AMD GPU index when using `app-amd`.
 
 ## Development and verification
 

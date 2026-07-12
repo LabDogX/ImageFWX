@@ -71,6 +71,7 @@ class Settings(BaseSettings):
     # values isolate Intel OpenVINO and AMD MIGraphX deployments from CUDA.
     accelerator_provider: Literal["auto", "cpu", "cuda", "openvino", "migraphx"] = "auto"
     openvino_device: Literal["AUTO", "CPU", "GPU", "GPU.0", "GPU.1", "NPU"] = "AUTO"
+    migraphx_device_id: int = Field(default=0, ge=0)
     
     # Security
     rate_limit: str = "100/minute"

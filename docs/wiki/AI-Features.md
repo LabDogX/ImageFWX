@@ -192,8 +192,16 @@ docker compose --profile intel up -d --build app-intel
 
 Set `OPENVINO_DEVICE=GPU` to require an Intel GPU, or use `AUTO` to let
 OpenVINO choose a compatible Intel device. The runtime also recognizes
-`MIGraphXExecutionProvider` when a compatible AMD ONNX Runtime build is
-provided; ImageFWX does not currently ship a general-purpose AMD Docker image.
+`MIGraphXExecutionProvider` for AMD GPUs. The experimental AMD profile is
+started explicitly so it does not launch alongside the CPU service:
+
+```bash
+docker compose --profile amd up -d --build app-amd
+```
+
+It requires a Linux x86_64 host with a ROCm-supported AMD GPU, `/dev/kfd`, and
+`/dev/dri`. Set `AMD_VIDEO_GID` and `AMD_RENDER_GID` in `.env` to the matching
+host device group IDs before starting the container.
 
 ---
 

@@ -11,6 +11,9 @@
 - Added an experimental multi-accelerator provider selector for CUDA, Intel
   OpenVINO, and AMD MIGraphX-capable ONNX Runtime builds.
 - Added an Intel OpenVINO Docker Compose profile with an Intel DRM device map.
+- Added an experimental AMD ROCm/MIGraphX Docker profile with constrained
+  device mappings, an AMD-published ONNX Runtime wheel, and an in-container
+  provider verification command.
 - Added an original ImageMagick border operation with independent sides, short-edge percentages, double borders, matte ratios, and backend previews.
 - Added optional read-only NAS browsing and safe copy-based imports to the existing image library.
 - Added text color, font-family selection, and uploaded PNG/JPEG/WebP/SVG image watermarks with safe image-ID resolution.
