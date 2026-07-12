@@ -130,7 +130,8 @@ RUN chown -R appuser:appuser /home/appuser/.u2net || true
 
 # Copy startup script
 COPY scripts/start.sh /start.sh
-RUN chmod +x /start.sh
+COPY scripts/verify-intel-acceleration.sh /verify-intel-acceleration.sh
+RUN chmod +x /start.sh /verify-intel-acceleration.sh
 
 # Switch to non-root user
 USER appuser

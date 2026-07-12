@@ -115,7 +115,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health && /verify-nvidia-acceleration.sh"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -177,13 +177,15 @@ services:
       - ${NAS_SOURCE_STORAGE:-nas_source}:/mnt/photos:ro
     devices:
       - /dev/dri:/dev/dri
+    group_add:
+      - "${INTEL_RENDER_GID:-109}"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health && /verify-intel-acceleration.sh"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -253,7 +255,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health && /verify-amd-acceleration.sh"]
       interval: 30s
       timeout: 10s
       retries: 3

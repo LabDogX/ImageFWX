@@ -18,7 +18,7 @@ ImageFWX has one deployment path and one Compose file:
 git clone https://github.com/LabDogX/ImageFWX.git
 cd ImageFWX
 ./scripts/setup.sh
-docker compose up -d --build
+./scripts/start-with-acceleration.sh
 ```
 
 Access the Web UI at `http://localhost:3012` by default.
@@ -26,6 +26,10 @@ The setup script generates secrets and does not overwrite an existing `.env`.
 For a public domain, set `ALLOWED_ORIGINS` to the HTTPS origin before starting.
 It enables registration for the first account; set `ALLOW_REGISTRATION=false`
 after that account has been created.
+
+The launcher chooses NVIDIA, AMD ROCm, Intel, or CPU based on the Linux host
+and verifies the chosen ONNX Runtime provider in the container. Set
+`ACCELERATOR=cpu`, `nvidia`, `amd`, or `intel` in `.env` to override detection.
 
 ---
 

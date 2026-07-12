@@ -61,16 +61,20 @@ cd ImageFWX
 ./scripts/setup.sh
 ```
 
-Build and start the CPU service:
+Detect the compatible accelerator and start the matching service:
 
 ```bash
-docker compose up -d --build
+./scripts/start-with-acceleration.sh
 ```
 
 The setup script never replaces an existing `.env`. For a public domain, set
 `ALLOWED_ORIGINS=https://your-domain.example` before starting. It enables
 registration for the first account; set `ALLOW_REGISTRATION=false` immediately
 after that account is created.
+
+Set `ACCELERATOR=cpu`, `nvidia`, `amd`, or `intel` in `.env` to override the
+automatic choice. In `auto` mode, an unavailable selected provider falls back
+to CPU after verification.
 
 Default public ports:
 
@@ -94,6 +98,12 @@ ImageMagick.
 | NVIDIA CUDA | Existing profile | `docker compose --profile gpu up -d --build app-gpu` |
 | Intel GPU | Experimental OpenVINO profile | `docker compose --profile intel up -d --build app-intel` |
 | AMD GPU | Experimental MIGraphX profile | `docker compose --profile amd up -d --build app-amd` |
+
+`./scripts/start-with-acceleration.sh` detects the Linux host before starting
+containers: NVIDIA first, then AMD ROCm, then Intel DRM; otherwise it uses the
+CPU service. It derives AMD and Intel device group IDs from the host and checks
+the selected ONNX provider inside the container. This avoids a healthy-looking
+container silently using CPU when an accelerator image is misconfigured.
 
 For Intel GPU acceleration, use a Linux host with the Intel DRM device exposed
 at `/dev/dri`; the `app-intel` service maps that device. Set

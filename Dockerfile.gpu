@@ -133,7 +133,8 @@ RUN python3.12 -c "from rembg import new_session; new_session('isnet-general-use
 RUN chown -R appuser:appuser /home/appuser/.u2net || true
 
 COPY scripts/start.sh /start.sh
-RUN chmod +x /start.sh
+COPY scripts/verify-nvidia-acceleration.sh /verify-nvidia-acceleration.sh
+RUN chmod +x /start.sh /verify-nvidia-acceleration.sh
 
 USER appuser
 

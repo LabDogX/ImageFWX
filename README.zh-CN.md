@@ -46,13 +46,15 @@ cd ImageFWX
 ./scripts/setup.sh
 ```
 
-构建并启动 CPU 服务：
+自动识别可用加速器并启动对应服务：
 
 ```bash
-docker compose up -d --build
+./scripts/start-with-acceleration.sh
 ```
 
 初始化脚本不会覆盖已有 `.env`。如使用公开域名，请在启动前将 `ALLOWED_ORIGINS` 改为 `https://你的域名`。脚本会为创建首个账号临时开启注册；创建完成后应立即设置 `ALLOW_REGISTRATION=false`。
+
+可在 `.env` 设置 `ACCELERATOR=cpu`、`nvidia`、`amd` 或 `intel` 强制指定；`auto` 模式下，如选中的 provider 验证失败，脚本会回退到 CPU。
 
 默认外部端口：
 
@@ -74,6 +76,8 @@ docker compose up -d --build
 | NVIDIA CUDA | 现有 profile | `docker compose --profile gpu up -d --build app-gpu` |
 | Intel GPU | 实验性 OpenVINO profile | `docker compose --profile intel up -d --build app-intel` |
 | AMD GPU | 实验性 MIGraphX profile | `docker compose --profile amd up -d --build app-amd` |
+
+`./scripts/start-with-acceleration.sh` 会在容器启动前识别 Linux 主机：优先 NVIDIA、其次 AMD ROCm、再到 Intel DRM；均不满足时使用 CPU。脚本会读取 AMD/Intel 主机设备组 ID，并在容器内验证实际选中的 ONNX provider，避免加速镜像配置错误时看似正常、实际回退 CPU。
 
 Intel GPU 加速需要 Linux 主机具备 Intel DRM 设备 `/dev/dri`；`app-intel` 会映射该设备。设置 `OPENVINO_DEVICE=GPU` 可强制使用 GPU，保留 `AUTO` 则由 OpenVINO 自动选择兼容的 Intel 设备；`CPU` 适合诊断使用。Intel NPU 的设备透传取决于主机设备节点，当前 Compose profile 未内置该映射。
 

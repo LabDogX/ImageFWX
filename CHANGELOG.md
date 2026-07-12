@@ -14,6 +14,9 @@
 - Added an experimental AMD ROCm/MIGraphX Docker profile with constrained
   device mappings, an AMD-published ONNX Runtime wheel, and an in-container
   provider verification command.
+- Added an accelerator-aware host launcher that selects NVIDIA, AMD, Intel, or
+  CPU profiles and falls back to CPU only when automatic provider verification
+  fails.
 - Added an original ImageMagick border operation with independent sides, short-edge percentages, double borders, matte ratios, and backend previews.
 - Added optional read-only NAS browsing and safe copy-based imports to the existing image library.
 - Added text color, font-family selection, and uploaded PNG/JPEG/WebP/SVG image watermarks with safe image-ID resolution.
