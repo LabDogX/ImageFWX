@@ -24,6 +24,9 @@ from app.workers.tasks import process_images, process_raw_command
 
 router = APIRouter()
 
+OutputFormat = Literal["webp", "png", "jpg", "jpeg", "gif", "avif", "tiff", "bmp"]
+PREVIEW_BUILD_FORMAT = "webp"
+
 
 # Security: Path validation
 ALLOWED_DIRS = [
@@ -207,8 +210,8 @@ class RawCommandRequest(BaseModel):
 
 class PreviewCommandRequest(BaseModel):
     operations: List[Operation]
-    output_format: str = "webp"
-    quality: int = 85
+    output_format: OutputFormat = "webp"
+    quality: int = Field(85, ge=1, le=100)
 
 
 # Response models
@@ -378,10 +381,14 @@ async def preview_command(request: PreviewCommandRequest):
         "params": {"value": request.quality}
     })
     
-    # Build command with placeholder paths
+    # The output extension is the only format-specific part of this command.
+    # Build with the canonical preview extension, then render the user-selected
+    # extension in the display string. This keeps PNG previews on the same safe
+    # command-building path as WebP while preserving the final output filename.
+    preview_output_path = f"{{output}}.{PREVIEW_BUILD_FORMAT}"
     command = await imagemagick_service.build_command(
         "{input}",
-        f"{{output}}.{request.output_format}",
+        preview_output_path,
         operations
     )
     
@@ -389,7 +396,10 @@ async def preview_command(request: PreviewCommandRequest):
     is_valid, error = imagemagick_service.validate_command(command)
     
     return CommandPreviewResponse(
-        command=command.replace("'{input}'", "input.jpg").replace("'{output}." + request.output_format + "'", f"output.{request.output_format}"),
+        command=command.replace(shlex.quote("{input}"), "input.jpg").replace(
+            shlex.quote(preview_output_path),
+            f"output.{request.output_format}",
+        ),
         valid=is_valid,
         error=error if not is_valid else None
     )
@@ -932,7 +942,7 @@ async def get_ai_capabilities():
 class ProcessSyncRequest(BaseModel):
     image_id: int
     operations: List[Operation]
-    output_format: str = "jpg"
+    output_format: OutputFormat = "jpg"
 
 
 @router.post("/process-sync")
@@ -993,20 +1003,13 @@ async def process_sync(
     else:
         operation_type = "edit"
     
-    # ===== FIX: Preserve input format instead of always converting to PNG =====
-    # Detect input format and use the same for output (unless explicitly overridden)
-    actual_output_format = request.output_format
+    # Honor the requested format. PNG is a deliberate user choice and must not
+    # silently be changed back to the source JPG/WebP format.
+    actual_output_format = request.output_format.lower()
     is_pdf_input = validated_input_path.lower().endswith('.pdf') or (image.mime_type and 'pdf' in image.mime_type.lower())
-    
+
     if is_pdf_input:
         actual_output_format = 'png'
-    elif actual_output_format == 'png':
-        # If input is JPG/JPEG and output was defaulting to PNG, keep as JPG
-        # This prevents massive file size inflation (1.6MB JPG -> 20MB PNG)
-        input_ext = Path(validated_input_path).suffix.lower().lstrip('.')
-        if input_ext in ('jpg', 'jpeg', 'webp'):
-            actual_output_format = input_ext if input_ext != 'jpeg' else 'jpg'
-            logger.info(f"PROCESS-SYNC: Preserving input format {input_ext} instead of PNG")
     
     # Generate output path
     output_path = file_service.get_output_path(

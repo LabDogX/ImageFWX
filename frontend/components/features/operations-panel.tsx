@@ -165,8 +165,8 @@ export function OperationsPanel() {
         try {
           const preview = await operationsApi.previewCommand(ops, outputFormat, quality);
           setCommandPreview(preview.command);
-        } catch {
-          setCommandPreview('Error building command');
+        } catch (error: any) {
+          setCommandPreview(error.response?.data?.detail || t('Error building command'));
         }
       } else {
         setCommandPreview('Select operations to see command preview');
@@ -174,7 +174,7 @@ export function OperationsPanel() {
     };
 
     buildPreview();
-  }, [activeCategory, width, height, percent, resizeMode, resizeFit, rotation, rawCommand, outputFormat, quality, watermarkText, watermarkPosition, watermarkFontSize]);
+  }, [activeCategory, width, height, percent, resizeMode, resizeFit, rotation, rawCommand, outputFormat, quality, watermarkText, watermarkPosition, watermarkFontSize, t]);
 
   // Refresh images helper
   const refreshImages = async () => {

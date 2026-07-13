@@ -227,7 +227,7 @@ export function Header() {
         <LocaleSwitcher />
         {/* Theme toggle */}
         <Select value={theme} onValueChange={setTheme}>
-          <SelectTrigger className="h-9 min-w-[144px] shrink-0 whitespace-nowrap [&>span]:whitespace-nowrap">
+          <SelectTrigger className="h-9 w-[144px] shrink-0 whitespace-nowrap [&>span]:whitespace-nowrap">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
