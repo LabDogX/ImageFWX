@@ -42,7 +42,8 @@ class NASService:
         return candidate
 
     def relative(self, path: Path) -> str:
-        return path.resolve().relative_to(self._root()).as_posix()
+        relative_path = path.resolve().relative_to(self._root()).as_posix()
+        return "" if relative_path == "." else relative_path
 
     async def browse(self, relative_path: str = "") -> Dict:
         self.require_enabled()
