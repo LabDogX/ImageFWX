@@ -147,7 +147,7 @@ export const imagesApi = {
   },
   
   list: async (skip = 0, limit = 50, projectId?: number | null) => {
-    let url = `/api/images/?skip=${skip}&limit=${limit}`;
+    let url = `/api/images?skip=${skip}&limit=${limit}`;
     if (projectId) {
       url += `&project_id=${projectId}`;
     }
@@ -312,12 +312,12 @@ export const queueApi = {
 // Settings API
 export const settingsApi = {
   get: async () => {
-    const { data } = await api.get('/api/settings/');
+    const { data } = await api.get('/api/settings');
     return data;
   },
   
   update: async (settings: any) => {
-    const { data } = await api.put('/api/settings/', settings);
+    const { data } = await api.put('/api/settings', settings);
     return data;
   },
   
@@ -329,12 +329,12 @@ export const settingsApi = {
 // Projects API
 export const projectsApi = {
   list: async () => {
-    const { data } = await api.get('/api/projects/');
+    const { data } = await api.get('/api/projects');
     return data;
   },
   
   create: async (name: string, description?: string, color?: string) => {
-    const { data } = await api.post('/api/projects/', { name, description, color });
+    const { data } = await api.post('/api/projects', { name, description, color });
     return data;
   },
   

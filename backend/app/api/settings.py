@@ -49,6 +49,7 @@ class UserSettingsResponse(BaseModel):
     allow_registration: bool  # Read-only, from .env
 
 
+@router.get("", response_model=UserSettingsResponse, include_in_schema=False)
 @router.get("/", response_model=UserSettingsResponse)
 async def get_settings(
     current_user: Optional[User] = Depends(get_current_user_optional)
@@ -72,6 +73,7 @@ async def get_settings(
     )
 
 
+@router.put("", response_model=UserSettingsResponse, include_in_schema=False)
 @router.put("/", response_model=UserSettingsResponse)
 async def update_settings(
     request: UserSettingsRequest,

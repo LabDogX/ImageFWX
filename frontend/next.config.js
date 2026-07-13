@@ -3,6 +3,10 @@ const internalApiUrl = (process.env.INTERNAL_API_URL || 'http://127.0.0.1:8000')
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
+  // FastAPI uses trailing slashes for a few collection endpoints. Do not
+  // canonicalize /api paths before fallback rewrites, or Next.js (308) and
+  // FastAPI (307) form a redirect loop through the reverse proxy.
+  skipTrailingSlashRedirect: true,
   images: {
     remotePatterns: [
       {

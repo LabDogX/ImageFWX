@@ -57,6 +57,7 @@ class MoveImagesRequest(BaseModel):
     project_id: Optional[int] = None  # None means remove from project
 
 
+@router.get("", response_model=ProjectListResponse, include_in_schema=False)
 @router.get("/", response_model=ProjectListResponse)
 async def list_projects(
     db: AsyncSession = Depends(get_db),
@@ -94,6 +95,7 @@ async def list_projects(
     return ProjectListResponse(projects=projects, total=len(projects))
 
 
+@router.post("", response_model=ProjectResponse, include_in_schema=False)
 @router.post("/", response_model=ProjectResponse)
 async def create_project(
     data: ProjectCreate,

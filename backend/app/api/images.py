@@ -143,6 +143,7 @@ async def upload_images(
     return UploadResponse(images=uploaded, failed=failed)
 
 
+@router.get("", response_model=List[ImageResponse], include_in_schema=False)
 @router.get("/", response_model=List[ImageResponse])
 async def list_images(
     skip: int = Query(0, ge=0),

@@ -62,3 +62,33 @@ async def test_non_image_is_rejected_and_copy_preserves_source(nas_root, tmp_pat
     _, copy_path, _ = await file_service.copy_into_uploads(photo, photo.name)
     assert Path(copy_path).read_bytes() == photo.read_bytes()
     assert hashlib.sha256(photo.read_bytes()).hexdigest() == source_hash
+
+
+@pytest.mark.asyncio
+async def test_browse_returns_relative_directories_and_supported_images(nas_root, monkeypatch):
+    album = nas_root / "2026" / "Trip"
+    album.mkdir(parents=True)
+    photo = nas_root / "cover.jpg"
+    photo.write_bytes(b"image bytes")
+    (nas_root / "notes.txt").write_text("not an image")
+
+    monkeypatch.setattr(file_service, "_detect_mime", lambda *_args, **_kwargs: "image/jpeg")
+
+    result = await NASService().browse()
+
+    assert result["path"] == ""
+    assert result["parent"] is None
+    assert result["directories"] == [{"name": "2026", "relative_path": "2026"}]
+    assert result["files"][0]["name"] == "cover.jpg"
+    assert result["files"][0]["relative_path"] == "cover.jpg"
+
+
+@pytest.mark.asyncio
+async def test_browse_child_returns_relative_parent(nas_root):
+    (nas_root / "2026" / "Trip").mkdir(parents=True)
+
+    result = await NASService().browse("2026")
+
+    assert result["path"] == "2026"
+    assert result["parent"] == ""
+    assert result["directories"] == [{"name": "Trip", "relative_path": "2026/Trip"}]
