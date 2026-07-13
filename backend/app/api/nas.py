@@ -1,4 +1,5 @@
 """Authenticated, read-only NAS photo browser and import API."""
+import logging
 from pathlib import Path
 from typing import List, Optional
 
@@ -15,6 +16,7 @@ from app.services.image_import_service import register_uploaded_copy
 from app.services.nas_service import nas_service
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 class NASImportRequest(BaseModel):
@@ -39,12 +41,15 @@ async def import_nas(request: NASImportRequest, db: AsyncSession = Depends(get_d
     imported, failed = [], []
     user_id = current_user.id if current_user else None
     for relative_path in request.relative_paths:
+        stage = "validation"
         try:
             source = nas_service.resolve_relative_path(relative_path)
             valid, error, mime_type = await file_service.validate_local_image(source)
             if not valid:
                 raise HTTPException(status_code=422, detail=error)
+            stage = "copy"
             stored, destination, size = await file_service.copy_into_uploads(source, source.name, user_id)
+            stage = "registration"
             image = await register_uploaded_copy(db, stored_filename=stored, file_path=destination, file_size=size,
                                                 original_filename=source.name, mime_type=mime_type, user_id=user_id)
             imported.append({"id": image.id, "original_filename": image.original_filename,
@@ -53,6 +58,11 @@ async def import_nas(request: NASImportRequest, db: AsyncSession = Depends(get_d
                              "height": image.height, "format": image.format, "created_at": image.created_at})
         except HTTPException as error:
             failed.append({"relative_path": relative_path, "error": error.detail})
-        except Exception as error:
-            failed.append({"relative_path": relative_path, "error": str(error)})
+        except Exception:
+            logger.exception("NAS import failed during %s", stage)
+            failure = {
+                "copy": ("copy_failed", "Unable to copy the file into application storage"),
+                "registration": ("registration_failed", "Unable to add the imported file to the image library"),
+            }.get(stage, ("validation_failed", "Unable to validate the selected file"))
+            failed.append({"relative_path": relative_path, "error_code": failure[0], "error": failure[1]})
     return {"images": imported, "failed": failed}

@@ -65,7 +65,15 @@ export function NASBrowser() {
       })));
       toast.success(t('Imported {count} photo(s)', { count: result.images.length }));
       if (result.failed.length) {
-        toast.error(t('{count} file(s) were not imported', { count: result.failed.length }));
+        const firstFailure = result.failed[0];
+        const failureMessage = firstFailure?.error_code === 'copy_failed'
+          ? t('Unable to copy the file into application storage')
+          : firstFailure?.error_code === 'registration_failed'
+            ? t('Unable to add the imported file to the image library')
+            : firstFailure?.error;
+        toast.error(t('{count} file(s) were not imported', { count: result.failed.length }), {
+          description: failureMessage,
+        });
       }
     } catch (error: any) {
       toast.error(error.response?.data?.detail || t('NAS import failed'));
@@ -86,7 +94,7 @@ export function NASBrowser() {
       </div>
       <div className="space-y-3">
         <div className="flex gap-2 text-xs">
-          <Button size="sm" variant="ghost" disabled={!listing?.parent || loading} onClick={() => load(listing?.parent || '')}>
+          <Button size="sm" variant="ghost" disabled={listing === null || listing.parent === null || loading} onClick={() => load(listing?.parent ?? '')}>
             <ChevronLeft className="h-4 w-4" />{t('Up')}
           </Button>
           <span className="self-center truncate">/{listing?.path || ''}</span>

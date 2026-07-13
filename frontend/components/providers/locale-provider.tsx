@@ -44,6 +44,8 @@ const zhCN: Record<string, string> = {
   'No supported images in this folder.': '此文件夹中没有受支持的图片。',
   'Unable to browse NAS': '无法浏览 NAS', 'NAS import failed': 'NAS 导入失败',
   'Imported {count} photo(s)': '已导入 {count} 张照片', '{count} file(s) were not imported': '{count} 个文件未能导入',
+  'Unable to copy the file into application storage': '无法将文件复制到应用存储目录',
+  'Unable to add the imported file to the image library': '无法将导入文件加入图片库',
   'Settings saved!': '设置已保存！', 'Failed to save settings': '保存设置失败',
   'Settings reset to defaults': '设置已恢复默认值', 'Failed to reset settings': '恢复默认设置失败',
   'Account': '账号', 'Logged in as': '当前登录账号', 'Change Password': '修改密码',
