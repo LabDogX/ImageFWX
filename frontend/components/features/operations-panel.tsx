@@ -248,14 +248,14 @@ export function OperationsPanel() {
 
       if (activeCategory === 'advanced') {
         if (!rawCommand.trim()) {
-          toast.error('Enter a command first');
+          toast.error(t('Enter a command first'));
           setIsProcessing(false);
           return;
         }
 
         // For terminal mode, use async queue
         const result = await operationsApi.processRaw(validIds, rawCommand, outputFormat);
-        toast.success('Job queued', { description: `Job ID: ${result.job_id}` });
+        toast.success(t('Job queued'), { description: `Job ID: ${result.job_id}` });
         setTimeout(refreshImages, 2000);
         setIsProcessing(false);
         return;
@@ -282,11 +282,11 @@ export function OperationsPanel() {
       }
 
       if (successCount > 0) {
-        toast.success(`Processed ${successCount} image(s)`, {
-          description: errorCount > 0 ? `${errorCount} failed` : undefined
+        toast.success(t('Processed {count} image(s)', { count: successCount }), {
+          description: errorCount > 0 ? t('{count} failed', { count: errorCount }) : undefined
         });
       } else {
-        toast.error('All operations failed');
+        toast.error(t('All operations failed'));
       }
 
       // Refresh gallery
@@ -322,13 +322,13 @@ export function OperationsPanel() {
       }
       
       if (successCount > 0) {
-        toast.success(`Rotated ${successCount} image(s) by ${angle}°`);
+        toast.success(t('Rotated {count} image(s) by {angle}°', { count: successCount, angle }));
         await refreshImages();
       } else {
-        toast.error('Rotation failed');
+        toast.error(t('Rotation failed'));
       }
     } catch (error: any) {
-      toast.error('Rotation failed', { description: error.message });
+      toast.error(t('Rotation failed'), { description: error.message });
     } finally {
       setIsProcessing(false);
     }
@@ -357,13 +357,13 @@ export function OperationsPanel() {
       }
       
       if (successCount > 0) {
-        toast.success(`Flipped ${successCount} image(s) ${direction}`);
+        toast.success(t('Flipped {count} image(s) {direction}', { count: successCount, direction: t(direction) }));
         await refreshImages();
       } else {
-        toast.error('Flip failed');
+        toast.error(t('Flip failed'));
       }
     } catch (error: any) {
-      toast.error('Flip failed', { description: error.message });
+      toast.error(t('Flip failed'), { description: error.message });
     } finally {
       setIsProcessing(false);
     }
@@ -434,33 +434,33 @@ export function OperationsPanel() {
                   {preserveAspect ? (
                     <>
                       <Link2 className="h-4 w-4" />
-                      Aspect Ratio Locked
+                      {t('Aspect Ratio Locked')}
                     </>
                   ) : (
                     <>
                       <Link2Off className="h-4 w-4" />
-                      Aspect Ratio Unlocked
+                      {t('Aspect Ratio Unlocked')}
                     </>
                   )}
                 </Button>
 
                 <div>
-                  <Label className="text-xs text-muted-foreground">Fit Mode</Label>
+                  <Label className="text-xs text-muted-foreground">{t('Fit Mode')}</Label>
                   <Select value={resizeFit} onValueChange={setResizeFit}>
                     <SelectTrigger className="mt-1">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="fit">Fit (within bounds)</SelectItem>
-                      <SelectItem value="fill">Fill (cover bounds)</SelectItem>
-                      <SelectItem value="force">Force (exact size)</SelectItem>
+                      <SelectItem value="fit">{t('Fit (within bounds)')}</SelectItem>
+                      <SelectItem value="fill">{t('Fill (cover bounds)')}</SelectItem>
+                      <SelectItem value="force">{t('Force (exact size)')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 {/* Quick presets */}
                 <div>
-                  <Label className="text-xs text-muted-foreground mb-2 block">Quick Presets</Label>
+                  <Label className="text-xs text-muted-foreground mb-2 block">{t('Quick Presets')}</Label>
                   <div className="grid grid-cols-2 gap-2">
                     {[
                       { label: 'HD', w: 1280, h: 720 },
@@ -479,7 +479,7 @@ export function OperationsPanel() {
                           setAspectRatio(preset.w / preset.h);
                         }}
                       >
-                        {preset.label}
+                        {t(preset.label)}
                       </Button>
                     ))}
                   </div>
@@ -488,7 +488,7 @@ export function OperationsPanel() {
 
               <TabsContent value="percent" className="space-y-4 mt-4">
                 <div>
-                  <Label className="text-xs text-muted-foreground">Scale: {percent}%</Label>
+                  <Label className="text-xs text-muted-foreground">{t('Scale: {count}%', { count: percent })}</Label>
                   <Slider
                     value={[percent]}
                     onValueChange={([v]) => setPercent(v)}
@@ -518,7 +518,7 @@ export function OperationsPanel() {
           {/* Rotate Tab */}
           <TabsContent value="rotate" className="space-y-4 mt-4">
             <div>
-              <Label className="text-xs text-muted-foreground">Rotation: {rotation}°</Label>
+              <Label className="text-xs text-muted-foreground">{t('Rotation: {count}°', { count: rotation })}</Label>
               <Slider
                 value={[rotation]}
                 onValueChange={([v]) => setRotation(v)}
@@ -540,18 +540,18 @@ export function OperationsPanel() {
                 180°
               </Button>
               <Button variant="outline" size="sm" onClick={() => setRotation(0)}>
-                Reset
+                {t('Reset')}
               </Button>
             </div>
 
             <div className="pt-2 border-t">
-              <Label className="text-xs text-muted-foreground mb-2 block">Flip</Label>
+              <Label className="text-xs text-muted-foreground mb-2 block">{t('Flip')}</Label>
               <div className="grid grid-cols-2 gap-2">
                 <Button variant="outline" size="sm" onClick={() => handleFlip('horizontal')} disabled={isProcessing}>
-                  <FlipHorizontal className="h-4 w-4 mr-1" /> Horizontal
+                  <FlipHorizontal className="h-4 w-4 mr-1" /> {t('Horizontal')}
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => handleFlip('vertical')} disabled={isProcessing}>
-                  <FlipVertical className="h-4 w-4 mr-1" /> Vertical
+                  <FlipVertical className="h-4 w-4 mr-1" /> {t('Vertical')}
                 </Button>
               </div>
             </div>
@@ -560,17 +560,17 @@ export function OperationsPanel() {
           {/* Watermark/Text Tab */}
           <TabsContent value="watermark" className="space-y-4 mt-4">
             <div>
-              <Label className="text-xs text-muted-foreground">Text</Label>
+              <Label className="text-xs text-muted-foreground">{t('Text')}</Label>
               <Input
                 value={watermarkText}
                 onChange={(e) => setWatermarkText(e.target.value)}
-                placeholder="Enter watermark text..."
+                placeholder={t('Enter watermark text...')}
                 className="mt-1"
               />
             </div>
 
             <div>
-              <Label className="text-xs text-muted-foreground">Position</Label>
+              <Label className="text-xs text-muted-foreground">{t('Position')}</Label>
               <div className="grid grid-cols-3 gap-1 mt-2 p-2 bg-secondary rounded-lg">
                 {['northwest', 'north', 'northeast', 'west', 'center', 'east', 'southwest', 'south', 'southeast'].map((pos) => (
                   <Button
@@ -587,7 +587,7 @@ export function OperationsPanel() {
             </div>
 
             <div>
-              <Label className="text-xs text-muted-foreground">Font Size: {watermarkFontSize}pt</Label>
+              <Label className="text-xs text-muted-foreground">{t('Font Size: {count}pt', { count: watermarkFontSize })}</Label>
               <Slider
                 value={[watermarkFontSize]}
                 onValueChange={([v]) => setWatermarkFontSize(v)}
@@ -617,7 +617,7 @@ export function OperationsPanel() {
             <div className="rounded-lg overflow-hidden border border-border">
               <div className="bg-gray-900 text-white px-3 py-2 text-xs flex items-center gap-2">
                 <Terminal className="h-3 w-3" />
-                <span>ImageMagick Terminal</span>
+                <span>{t('ImageMagick Terminal')}</span>
               </div>
               <Editor
                 height="200px"
@@ -636,13 +636,13 @@ export function OperationsPanel() {
             </div>
 
             <div className="text-xs text-muted-foreground space-y-1">
-              <p>Use <code className="bg-secondary px-1 rounded">%input%</code> for input file</p>
-              <p>Use <code className="bg-secondary px-1 rounded">%output%</code> for output file</p>
-              <p className="text-amber-600">⚠️ Some commands are blocked for security</p>
+              <p>{t('Use %input% for input file')}</p>
+              <p>{t('Use %output% for output file')}</p>
+              <p className="text-amber-600">⚠️ {t('Some commands are blocked for security')}</p>
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">Quick Commands</Label>
+              <Label className="text-xs text-muted-foreground">{t('Quick Commands')}</Label>
               <div className="grid grid-cols-1 gap-1">
                 {[
                   { label: 'Grayscale', cmd: '-colorspace Gray' },
@@ -657,7 +657,7 @@ export function OperationsPanel() {
                     className="justify-start text-xs"
                     onClick={() => setRawCommand(item.cmd)}
                   >
-                    {item.label}: <code className="ml-1 text-muted-foreground">{item.cmd}</code>
+                    {t(item.label)}: <code className="ml-1 text-muted-foreground">{item.cmd}</code>
                   </Button>
                 ))}
               </div>
@@ -667,13 +667,13 @@ export function OperationsPanel() {
           {/* Output Format */}
           <div className="mt-6 pt-4 border-t border-border space-y-4">
             <div>
-              <Label className="text-xs text-muted-foreground">Output Format</Label>
+              <Label className="text-xs text-muted-foreground">{t('Output Format')}</Label>
               <Select value={outputFormat} onValueChange={setOutputFormat}>
                 <SelectTrigger className="mt-1">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="webp">WebP (recommended)</SelectItem>
+                  <SelectItem value="webp">{t('WebP (recommended)')}</SelectItem>
                   <SelectItem value="jpg">JPEG</SelectItem>
                   <SelectItem value="png">PNG</SelectItem>
                   <SelectItem value="avif">AVIF</SelectItem>
@@ -683,7 +683,7 @@ export function OperationsPanel() {
 
             {outputFormat !== 'png' && (
               <div>
-                <Label className="text-xs text-muted-foreground">Quality: {quality}%</Label>
+                <Label className="text-xs text-muted-foreground">{t('Quality: {count}%', { count: quality })}</Label>
                 <Slider
                   value={[quality]}
                   onValueChange={([v]) => setQuality(v)}
@@ -698,7 +698,7 @@ export function OperationsPanel() {
 
           {/* Command Preview */}
           <div className="mt-4 p-3 bg-secondary rounded-lg">
-            <Label className="text-xs text-muted-foreground mb-1 block">Command Preview</Label>
+            <Label className="text-xs text-muted-foreground mb-1 block">{t('Command Preview')}</Label>
             <code className="text-xs text-foreground break-all block">{commandPreview}</code>
           </div>
         </Tabs>
@@ -714,12 +714,12 @@ export function OperationsPanel() {
           {isProcessing ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Processing...
+              {t('Processing...')}
             </>
           ) : (
             <>
               <Play className="h-4 w-4 mr-2" />
-              Apply to {displaySelectedCount} image(s)
+              {t('Apply to {count} image(s)', { count: displaySelectedCount })}
             </>
           )}
         </Button>
