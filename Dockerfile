@@ -144,5 +144,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 # Use tini as init
 ENTRYPOINT ["/usr/bin/tini", "--"]
 
-# Start both services
-CMD ["/start.sh"]
+# Run through Bash instead of executing the file directly. This remains
+# compatible with normal Docker hosts and also works when a NAS build loses the
+# executable bit on a copied shell script.
+CMD ["/bin/bash", "/start.sh"]

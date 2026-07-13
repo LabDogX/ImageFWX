@@ -142,4 +142,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:3000/api/health && curl -f http://localhost:8000/health || exit 1
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["/start.sh"]
+# See the CPU Dockerfile: explicitly invoking Bash avoids NAS builds that lose
+# the executable bit on copied shell scripts.
+CMD ["/bin/bash", "/start.sh"]

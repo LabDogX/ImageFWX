@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fixed NAS builds that lose the executable bit on `start.sh` by invoking the
+  startup script through Bash.
 - Simplified deployment to one Compose file: NAS storage is configured through
   `.env`, and the obsolete standalone NAS and Nginx Compose files were removed.
 - Added `scripts/setup.sh` to generate an initial `.env` with deployment
