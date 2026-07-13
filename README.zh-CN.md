@@ -86,7 +86,23 @@ docker compose up -d --build
 
 容器以 UID/GID `10001` 运行。请为主机的 `uploads`、`processed` 和 `temp` 目录授予该身份写权限；原始照片目录必须保持只读挂载，且绝不能把 `/app/processed` 映射到该目录。
 
-如需域名或 HTTPS，请用 Nginx Proxy Manager、Caddy、Traefik 或已有反向代理转发 Web 界面端口，并将 `ALLOWED_ORIGINS` 设置为公开的 HTTPS 域名；不再需要第二份 ImageFWX Compose 配置。
+如需域名或 HTTPS，请用反向代理转发 Web 界面端口，并将 `ALLOWED_ORIGINS` 设置为公开的 HTTPS 域名；不再需要第二份 ImageFWX Compose 配置。ImageFWX 会将 Next.js Web 界面中未被本地路由处理的 `/api/*` 请求转发到内部 FastAPI，因此反向代理只需将公开站点转发到 `3012` 端口。
+
+### Lucky 反向代理
+
+在 Lucky 中创建一条 HTTPS Web 服务规则，将**默认后端地址**设为：
+
+```text
+http://NAS 局域网 IP:3012
+```
+
+“前端域名”只填写域名，例如 `image.example.com`，不要填写 `https://`，也不要额外创建 `/api` 子规则。Lucky 无法稳定地将同一域名下的不同路径分别转发到不同后端。设置 `ALLOWED_ORIGINS=https://image.example.com` 后，重新构建并启动：
+
+```bash
+docker compose up -d --build
+```
+
+无需为 `8012` 在 Lucky 中创建公网规则；浏览器 API 请求与 Web 界面共用同一个公开域名。
 
 ## 处理工作流
 

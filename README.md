@@ -110,9 +110,27 @@ The container runs as UID/GID `10001`. Grant that identity write access to the
 host `uploads`, `processed`, and `temp` directories. Keep the original-photo
 mount read-only and never map `/app/processed` to it.
 
-For a domain or HTTPS, place Nginx Proxy Manager, Caddy, Traefik, or an
-existing reverse proxy in front of the Web UI port. Set `ALLOWED_ORIGINS` to
-the public HTTPS origin; no second ImageFWX Compose file is needed.
+For a domain or HTTPS, place a reverse proxy in front of the Web UI port and
+set `ALLOWED_ORIGINS` to the public HTTPS origin; no second ImageFWX Compose
+file is needed. ImageFWX proxies unmatched `/api/*` requests from its Next.js
+Web UI to the internal FastAPI service, so a reverse proxy only needs to
+forward the public site to port `3012`.
+
+### Lucky reverse proxy
+
+Create one HTTPS Web Service rule and point its default backend to
+`http://NAS_LAN_IP:3012`. Enter only the domain in Lucky's front-domain field
+(for example, `image.example.com`); do not add a separate `/api` child rule.
+Lucky does not reliably route different paths of the same hostname to separate
+backends. Set `ALLOWED_ORIGINS=https://image.example.com`, rebuild the image,
+and restart the service:
+
+```bash
+docker compose up -d --build
+```
+
+Do not create a Lucky public rule for port `8012`; all browser API traffic uses
+the same public domain as the Web UI.
 
 ## Processing workflow
 
