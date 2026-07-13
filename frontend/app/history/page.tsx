@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { 
   ArrowLeft, 
-  Download, 
   Trash2, 
   RefreshCw,
   Clock,
@@ -28,6 +27,7 @@ import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { queueApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import { Locale, useLocale } from '@/components/providers/locale-provider';
 
 interface Job {
   id: number;
@@ -44,22 +44,24 @@ interface Job {
   parameters: Record<string, any>;
 }
 
-function formatDate(dateStr: string) {
+type Translate = (message: string, values?: Record<string, string | number>) => string;
+
+function formatDate(dateStr: string, locale: Locale) {
   const date = new Date(dateStr);
-  return date.toLocaleString();
+  return date.toLocaleString(locale === 'zh-CN' ? 'zh-CN' : 'en-US');
 }
 
 // Parse operation details from job
-function getOperationDetails(job: Job): { name: string; icon: React.ReactNode; description: string } {
+function getOperationDetails(job: Job, t: Translate): { name: string; icon: React.ReactNode; description: string } {
   const params = job.parameters || {};
   const operations = params.operations || [];
   
   // Check for specific operation types
   if (job.operation === 'remove_background' || job.job_id?.startsWith('bg_removal')) {
     return {
-      name: 'Remove Background',
+      name: t('Remove Background'),
       icon: <Eraser className="h-4 w-4 text-purple-500" />,
-      description: 'AI background removal'
+      description: t('AI background removal')
     };
   }
   
@@ -71,11 +73,11 @@ function getOperationDetails(job: Job): { name: string; icon: React.ReactNode; d
       const cropOp = operations.find((op: any) => op.operation === 'crop');
       const cropParams = cropOp?.params || {};
       return {
-        name: 'Crop',
+        name: t('Crop'),
         icon: <Crop className="h-4 w-4 text-blue-500" />,
         description: cropParams.width && cropParams.height 
           ? `${cropParams.width}×${cropParams.height}px` 
-          : 'Image cropped'
+          : t('Image cropped')
       };
     }
     
@@ -83,16 +85,16 @@ function getOperationDetails(job: Job): { name: string; icon: React.ReactNode; d
       const resizeOp = operations.find((op: any) => op.operation === 'resize');
       const p = resizeOp?.params || {};
       return {
-        name: 'Resize',
+        name: t('Resize'),
         icon: <ImageIcon className="h-4 w-4 text-green-500" />,
-        description: p.width && p.height ? `${p.width}×${p.height}px` : 'Image resized'
+        description: p.width && p.height ? `${p.width}×${p.height}px` : t('Image resized')
       };
     }
     
     if (opTypes.includes('rotate')) {
       const rotateOp = operations.find((op: any) => op.operation === 'rotate');
       return {
-        name: 'Rotate',
+        name: t('Rotate'),
         icon: <RotateCw className="h-4 w-4 text-orange-500" />,
         description: `${rotateOp?.params?.angle || 0}°`
       };
@@ -101,58 +103,58 @@ function getOperationDetails(job: Job): { name: string; icon: React.ReactNode; d
     if (opTypes.includes('watermark')) {
       const wmOp = operations.find((op: any) => op.operation === 'watermark');
       return {
-        name: 'Watermark',
+        name: t('Watermark'),
         icon: <Type className="h-4 w-4 text-pink-500" />,
-        description: wmOp?.params?.text ? `"${wmOp.params.text}"` : 'Text added'
+        description: wmOp?.params?.text ? `"${wmOp.params.text}"` : t('Text added')
       };
     }
     
     if (opTypes.includes('blur') || opTypes.includes('sharpen')) {
       return {
-        name: 'Filter',
+        name: t('Filter'),
         icon: <Wand2 className="h-4 w-4 text-indigo-500" />,
-        description: opTypes.join(', ')
+        description: t('Filters applied')
       };
     }
     
     if (opTypes.includes('brightness-contrast') || opTypes.includes('modulate')) {
       return {
-        name: 'Adjustments',
+        name: t('Adjustments'),
         icon: <Sliders className="h-4 w-4 text-cyan-500" />,
-        description: 'Brightness/contrast/saturation'
+        description: t('Brightness/contrast/saturation')
       };
     }
     
     if (opTypes.includes('auto-orient') || opTypes.includes('enhance') || opTypes.includes('auto-level')) {
       return {
-        name: 'Auto Enhance',
+        name: t('Auto Enhance'),
         icon: <Sparkles className="h-4 w-4 text-yellow-500" />,
-        description: 'Auto enhancement applied'
+        description: t('Auto enhancement applied')
       };
     }
     
     if (opTypes.includes('convert') || opTypes.includes('quality')) {
       const fmt = params.output_format || 'image';
       return {
-        name: 'Convert',
+        name: t('Convert'),
         icon: <Palette className="h-4 w-4 text-teal-500" />,
-        description: `Format: ${fmt.toUpperCase()}`
+        description: t('Format: {format}', { format: fmt.toUpperCase() })
       };
     }
     
     // Multiple operations
     if (opTypes.length > 1) {
       return {
-        name: 'Multiple Edits',
+        name: t('Multiple Edits'),
         icon: <Sliders className="h-4 w-4 text-blue-500" />,
-        description: opTypes.slice(0, 3).join(', ') + (opTypes.length > 3 ? '...' : '')
+        description: t('{count} edits', { count: opTypes.length })
       };
     }
     
     // Single unknown operation
     if (opTypes.length === 1) {
       return {
-        name: opTypes[0].charAt(0).toUpperCase() + opTypes[0].slice(1),
+        name: t('Image Processing'),
         icon: <Wand2 className="h-4 w-4 text-gray-500" />,
         description: ''
       };
@@ -161,15 +163,16 @@ function getOperationDetails(job: Job): { name: string; icon: React.ReactNode; d
   
   // Default fallback
   return {
-    name: job.operation === 'batch_process' ? 'Image Processing' : job.operation,
+    name: t('Image Processing'),
     icon: <ImageIcon className="h-4 w-4 text-gray-500" />,
     description: ''
   };
 }
 
-function JobCard({ job, onRefresh, onDelete }: { job: Job; onRefresh: () => void; onDelete: () => void }) {
+function JobCard({ job, onDelete }: { job: Job; onDelete: () => void }) {
   const [downloading, setDownloading] = useState(false);
-  const opDetails = getOperationDetails(job);
+  const { locale, t } = useLocale();
+  const opDetails = getOperationDetails(job, t);
 
   const handleDownload = async () => {
     if (job.status !== 'completed' || job.output_files.length === 0) return;
@@ -185,9 +188,9 @@ function JobCard({ job, onRefresh, onDelete }: { job: Job; onRefresh: () => void
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      toast.success('Download started!');
+      toast.success(t('Download started!'));
     } catch (error) {
-      toast.error('Download failed');
+      toast.error(t('Download failed'));
     } finally {
       setDownloading(false);
     }
@@ -202,11 +205,11 @@ function JobCard({ job, onRefresh, onDelete }: { job: Job; onRefresh: () => void
   }[job.status] || <Clock className="h-4 w-4" />;
 
   const statusLabel = {
-    pending: 'Pending',
-    processing: 'Processing',
-    completed: 'Completed',
-    failed: 'Failed',
-    cancelled: 'Cancelled',
+    pending: t('Pending'),
+    processing: t('Processing'),
+    completed: t('Completed'),
+    failed: t('Failed'),
+    cancelled: t('Cancelled'),
   }[job.status] || job.status;
 
   return (
@@ -224,7 +227,7 @@ function JobCard({ job, onRefresh, onDelete }: { job: Job; onRefresh: () => void
             <p className="font-medium">{opDetails.name}</p>
             <div className="flex items-center gap-2">
               <p className="text-xs text-muted-foreground">
-                {formatDate(job.created_at)}
+                {formatDate(job.created_at, locale)}
               </p>
               {opDetails.description && (
                 <>
@@ -252,7 +255,7 @@ function JobCard({ job, onRefresh, onDelete }: { job: Job; onRefresh: () => void
       {job.status === 'processing' && (
         <div className="mt-3">
           <Progress value={job.progress} className="h-2" />
-          <p className="text-xs text-muted-foreground mt-1">{job.progress}% complete</p>
+          <p className="text-xs text-muted-foreground mt-1">{t('{count}% complete', { count: job.progress })}</p>
         </div>
       )}
 
@@ -262,8 +265,8 @@ function JobCard({ job, onRefresh, onDelete }: { job: Job; onRefresh: () => void
 
       <div className="mt-3 flex items-center justify-between">
         <p className="text-xs text-muted-foreground">
-          {job.input_files.length} input file{job.input_files.length !== 1 ? 's' : ''}
-          {job.status === 'completed' && ` → ${job.output_files.length} output file${job.output_files.length !== 1 ? 's' : ''}`}
+          {t('{count} input file(s)', { count: job.input_files.length })}
+          {job.status === 'completed' && ` → ${t('{count} output file(s)', { count: job.output_files.length })}`}
         </p>
         
         <div className="flex gap-2">
@@ -279,7 +282,7 @@ function JobCard({ job, onRefresh, onDelete }: { job: Job; onRefresh: () => void
               ) : (
                 <>
                   <FileDown className="h-4 w-4 mr-1" />
-                  Download
+                  {t('Download')}
                 </>
               )}
             </Button>
@@ -299,6 +302,7 @@ function JobCard({ job, onRefresh, onDelete }: { job: Job; onRefresh: () => void
 }
 
 export default function HistoryPage() {
+  const { t } = useLocale();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string | null>(null);
@@ -309,11 +313,11 @@ export default function HistoryPage() {
       const data = await queueApi.listJobs(filter || undefined, 100);
       setJobs(data);
     } catch (error) {
-      toast.error('Failed to load history');
+      toast.error(t('Failed to load history'));
     } finally {
       setLoading(false);
     }
-  }, [filter]);
+  }, [filter, t]);
 
   useEffect(() => {
     loadJobs();
@@ -331,9 +335,9 @@ export default function HistoryPage() {
     try {
       await queueApi.deleteJob(jobId);
       setJobs(jobs.filter(j => j.job_id !== jobId));
-      toast.success('Job deleted');
+      toast.success(t('Job deleted'));
     } catch (error) {
-      toast.error('Failed to delete job');
+      toast.error(t('Failed to delete job'));
     }
   };
 
@@ -347,12 +351,12 @@ export default function HistoryPage() {
                 <ArrowLeft className="h-5 w-5" />
               </Button>
             </Link>
-            <h1 className="text-xl font-semibold">Processing History</h1>
+            <h1 className="text-xl font-semibold">{t('Processing History')}</h1>
           </div>
           
           <Button variant="outline" size="sm" onClick={loadJobs}>
             <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
+            {t('Refresh')}
           </Button>
         </div>
       </header>
@@ -360,10 +364,10 @@ export default function HistoryPage() {
       <div className="max-w-4xl mx-auto px-4 py-4">
         <div className="flex gap-2">
           {[
-            { value: null, label: 'All' },
-            { value: 'completed', label: 'Completed' },
-            { value: 'processing', label: 'Processing' },
-            { value: 'failed', label: 'Failed' },
+            { value: null, label: t('All') },
+            { value: 'completed', label: t('Completed') },
+            { value: 'processing', label: t('Processing') },
+            { value: 'failed', label: t('Failed') },
           ].map(({ value, label }) => (
             <Button
               key={label}
@@ -385,12 +389,12 @@ export default function HistoryPage() {
         ) : jobs.length === 0 ? (
           <div className="text-center py-12">
             <Clock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h2 className="text-lg font-medium">No processing history</h2>
+            <h2 className="text-lg font-medium">{t('No processing history')}</h2>
             <p className="text-muted-foreground mt-1">
-              Process some images to see them here
+              {t('Process some images to see them here')}
             </p>
             <Link href="/">
-              <Button className="mt-4">Go to Editor</Button>
+              <Button className="mt-4">{t('Go to Editor')}</Button>
             </Link>
           </div>
         ) : (
@@ -399,7 +403,6 @@ export default function HistoryPage() {
               <JobCard
                 key={job.job_id}
                 job={job}
-                onRefresh={loadJobs}
                 onDelete={() => handleDelete(job.job_id)}
               />
             ))}
