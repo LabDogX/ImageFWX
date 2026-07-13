@@ -12,10 +12,13 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { authApi, settingsApi } from '@/lib/api';
 import { useStore } from '@/lib/store';
+import { LocaleSwitcher } from '@/components/layout/locale-switcher';
+import { useLocale } from '@/components/providers/locale-provider';
 
 export default function LoginPage() {
   const router = useRouter();
   const { setUser, setToken, token } = useStore();
+  const { t } = useLocale();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -62,7 +65,7 @@ export default function LoginPage() {
     e.preventDefault();
     
     if (!email || !password) {
-      toast.error('Please fill in all fields');
+      toast.error(t('Please fill in all fields'));
       return;
     }
     
@@ -76,11 +79,11 @@ export default function LoginPage() {
       const user = await authApi.me();
       setUser(user);
       
-      toast.success('Welcome back!');
+      toast.success(t('Welcome back!'));
       router.push('/');
     } catch (error: any) {
-      toast.error('Login failed', {
-        description: error.response?.data?.detail || 'Invalid credentials'
+      toast.error(t('Login failed'), {
+        description: error.response?.data?.detail || t('Invalid credentials')
       });
     } finally {
       setIsLoading(false);
@@ -105,8 +108,8 @@ export default function LoginPage() {
         `redirect_uri=${encodeURIComponent(redirectUri)}`
       );
     } catch (error: any) {
-      toast.error('Google login failed', {
-        description: error.response?.data?.detail || 'Failed to initiate Google login'
+      toast.error(t('Google login failed'), {
+        description: error.response?.data?.detail || t('Failed to initiate Google login')
       });
       setGoogleLoading(false);
     }
@@ -114,6 +117,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="absolute right-4 top-4"><LocaleSwitcher /></div>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -122,7 +126,7 @@ export default function LoginPage() {
         {/* Back button */}
         <Link href="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-8">
           <ArrowLeft className="h-4 w-4" />
-          Back to home
+          {t('Back to home')}
         </Link>
 
         {/* Card */}
@@ -141,14 +145,14 @@ export default function LoginPage() {
             </div>
             <div>
               <h1 className="font-semibold">ImageMagick WebGUI</h1>
-              <p className="text-sm text-muted-foreground">Sign in to your account</p>
+              <p className="text-sm text-muted-foreground">{t('Sign in to your account')}</p>
             </div>
           </div>
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t('Email')}</Label>
               <Input
                 id="email"
                 type="email"
@@ -161,12 +165,12 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t('Password')}</Label>
               <div className="relative mt-1">
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="Enter your password"
+                  placeholder={t('Enter your password')}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   autoComplete="current-password"
@@ -185,10 +189,10 @@ export default function LoginPage() {
               {isLoading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Signing in...
+                  {t('Signing in...')}
                 </>
               ) : (
-                'Sign in'
+                t('Sign in')
               )}
             </Button>
           </form>
@@ -201,7 +205,7 @@ export default function LoginPage() {
                   <span className="w-full border-t" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+                  <span className="bg-card px-2 text-muted-foreground">{t('Or continue with')}</span>
                 </div>
               </div>
               
@@ -215,7 +219,7 @@ export default function LoginPage() {
                 {googleLoading ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Redirecting to Google...
+                    {t('Redirecting to Google...')}
                   </>
                 ) : (
                   <>
@@ -237,7 +241,7 @@ export default function LoginPage() {
                         d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                       />
                     </svg>
-                    Continue with Google
+                    {t('Continue with Google')}
                   </>
                 )}
               </Button>
@@ -247,9 +251,9 @@ export default function LoginPage() {
           {/* Register link */}
           {allowRegistration && (
             <p className="mt-6 text-center text-sm text-muted-foreground">
-              Don&apos;t have an account?{' '}
+              {t("Don't have an account?")}{' '}
               <Link href="/register" className="text-primary hover:underline">
-                Create one
+                {t('Create one')}
               </Link>
             </p>
           )}
@@ -260,13 +264,13 @@ export default function LoginPage() {
           <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-950 rounded-lg border border-amber-200 dark:border-amber-800">
             <p className="text-center text-sm text-amber-700 dark:text-amber-300 flex items-center justify-center gap-2">
               <ShieldAlert className="h-4 w-4" />
-              Login is required to use this application
+              {t('Login is required to use this application')}
             </p>
           </div>
         ) : (
           <p className="mt-4 text-center text-xs text-muted-foreground">
-            You can also use the app without an account.<br />
-            <Link href="/" className="text-primary hover:underline">Continue as guest</Link>
+            {t('You can also use the app without an account.')}<br />
+            <Link href="/" className="text-primary hover:underline">{t('Continue as guest')}</Link>
           </p>
         )}
       </motion.div>

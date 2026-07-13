@@ -28,9 +28,12 @@ import { toast } from 'sonner';
 import { settingsApi, authApi } from '@/lib/api';
 import { useStore } from '@/lib/store';
 import { isPasswordValid } from '@/lib/password';
+import { LocaleSwitcher } from '@/components/layout/locale-switcher';
+import { useLocale } from '@/components/providers/locale-provider';
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
+  const { t } = useLocale();
   const { user, token, setOutputFormat, setQuality } = useStore();
   const [mounted, setMounted] = useState(false);
   
@@ -100,9 +103,9 @@ export default function SettingsPage() {
       setOutputFormat(defaultFormat);
       setQuality(defaultQuality);
       
-      toast.success('Settings saved!');
+      toast.success(t('Settings saved!'));
     } catch (error) {
-      toast.error('Failed to save settings');
+      toast.error(t('Failed to save settings'));
     }
   };
 
@@ -110,9 +113,9 @@ export default function SettingsPage() {
     try {
       await settingsApi.reset();
       await loadSettings();
-      toast.success('Settings reset to defaults');
+      toast.success(t('Settings reset to defaults'));
     } catch (error) {
-      toast.error('Failed to reset settings');
+      toast.error(t('Failed to reset settings'));
     }
   };
 
@@ -180,7 +183,8 @@ export default function SettingsPage() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </Link>
-          <h1 className="text-xl font-semibold">Settings</h1>
+          <h1 className="text-xl font-semibold">{t('Settings')}</h1>
+          <div className="ml-auto"><LocaleSwitcher /></div>
         </div>
       </header>
 
@@ -195,48 +199,48 @@ export default function SettingsPage() {
           <section className="space-y-4">
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <User className="h-5 w-5" />
-              Account
+              {t('Account')}
             </h2>
             <div className="p-4 rounded-xl border border-border space-y-4">
               {token && user ? (
                 <>
                   <div className="flex items-center justify-between">
                     <div>
-                      <Label>Logged in as</Label>
+                      <Label>{t('Logged in as')}</Label>
                       <p className="text-sm text-muted-foreground">{user.email}</p>
                     </div>
                     <Button variant="outline" size="sm" onClick={() => setShowChangePassword(true)}>
                       <Lock className="h-4 w-4 mr-2" />
-                      Change Password
+                      {t('Change Password')}
                     </Button>
                   </div>
                   
                   {user.is_admin && (
                     <div className="flex items-center justify-between pt-4 border-t">
                       <div>
-                        <Label>Create New Account</Label>
-                        <p className="text-sm text-muted-foreground">Add a new user (admin only)</p>
+                        <Label>{t('Create New Account')}</Label>
+                        <p className="text-sm text-muted-foreground">{t('Add a new user (admin only)')}</p>
                       </div>
                       <Button variant="outline" size="sm" onClick={() => setShowCreateAccount(true)}>
                         <UserPlus className="h-4 w-4 mr-2" />
-                        Create Account
+                        {t('Create Account')}
                       </Button>
                     </div>
                   )}
                 </>
               ) : (
                 <div className="text-center py-4">
-                  <p className="text-muted-foreground mb-4">Log in to manage your account</p>
+                  <p className="text-muted-foreground mb-4">{t('Log in to manage your account')}</p>
                   <Link href="/login">
                     <Button>
                       <User className="h-4 w-4 mr-2" />
-                      Log In
+                      {t('Log In')}
                     </Button>
                   </Link>
                   <Link href="/register" className="ml-2">
                     <Button variant="outline">
                       <UserPlus className="h-4 w-4 mr-2" />
-                      Register
+                      {t('Register')}
                     </Button>
                   </Link>
                 </div>
@@ -248,19 +252,19 @@ export default function SettingsPage() {
           <section className="space-y-4">
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <Shield className="h-5 w-5" />
-              Security
+              {t('Security')}
             </h2>
             <div className="p-4 rounded-xl border border-border space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <Label>Require Login</Label>
+                  <Label>{t('Require Login')}</Label>
                   <p className="text-sm text-muted-foreground">
-                    Users must log in to use the application
+                    {t('Users must log in to use the application')}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`text-sm font-medium ${requireLogin ? 'text-green-600' : 'text-muted-foreground'}`}>
-                    {requireLogin ? 'Enabled' : 'Disabled'}
+                    {requireLogin ? t('Enabled') : t('Disabled')}
                   </span>
                 </div>
               </div>
@@ -272,12 +276,12 @@ export default function SettingsPage() {
 
           {/* Appearance */}
           <section className="space-y-4">
-            <h2 className="text-lg font-semibold">Appearance</h2>
+            <h2 className="text-lg font-semibold">{t('Appearance')}</h2>
             <div className="p-4 rounded-xl border border-border space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <Label>Theme</Label>
-                  <p className="text-sm text-muted-foreground">Choose your preferred theme</p>
+                  <Label>{t('Theme')}</Label>
+                  <p className="text-sm text-muted-foreground">{t('Choose your preferred theme')}</p>
                 </div>
                 <Select value={theme} onValueChange={setTheme}>
                   <SelectTrigger className="w-[150px]">
@@ -287,19 +291,19 @@ export default function SettingsPage() {
                     <SelectItem value="light">
                       <div className="flex items-center gap-2">
                         <Sun className="h-4 w-4" />
-                        Light
+                        {t('Light')}
                       </div>
                     </SelectItem>
                     <SelectItem value="dark">
                       <div className="flex items-center gap-2">
                         <Moon className="h-4 w-4" />
-                        Dark
+                        {t('Dark')}
                       </div>
                     </SelectItem>
                     <SelectItem value="system">
                       <div className="flex items-center gap-2">
                         <Monitor className="h-4 w-4" />
-                        System
+                        {t('System')}
                       </div>
                     </SelectItem>
                   </SelectContent>
@@ -310,11 +314,11 @@ export default function SettingsPage() {
 
           {/* Processing Defaults */}
           <section className="space-y-4">
-            <h2 className="text-lg font-semibold">Processing Defaults</h2>
+            <h2 className="text-lg font-semibold">{t('Processing Defaults')}</h2>
             <div className="p-4 rounded-xl border border-border space-y-6">
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <Label>Default Quality</Label>
+                  <Label>{t('Default Quality')}</Label>
                   <span className="text-sm text-muted-foreground">{defaultQuality}%</span>
                 </div>
                 <Slider
@@ -330,7 +334,7 @@ export default function SettingsPage() {
               </div>
 
               <div>
-                <Label>Default Output Format</Label>
+                <Label>{t('Default Output Format')}</Label>
                 <Select value={defaultFormat} onValueChange={setDefaultFormat}>
                   <SelectTrigger className="mt-1">
                     <SelectValue />
@@ -346,7 +350,7 @@ export default function SettingsPage() {
 
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <Label>Max Parallel Jobs</Label>
+                  <Label>{t('Max Parallel Jobs')}</Label>
                   <span className="text-sm text-muted-foreground">{maxParallelJobs}</span>
                 </div>
                 <Slider
@@ -365,11 +369,11 @@ export default function SettingsPage() {
 
           {/* Upload Settings */}
           <section className="space-y-4">
-            <h2 className="text-lg font-semibold">Upload Settings</h2>
+            <h2 className="text-lg font-semibold">{t('Upload Settings')}</h2>
             <div className="p-4 rounded-xl border border-border space-y-6">
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <Label>Max Upload Size</Label>
+                  <Label>{t('Max Upload Size')}</Label>
                   <span className="text-sm text-muted-foreground">{maxUploadSize} MB</span>
                 </div>
                 <Slider
@@ -383,7 +387,7 @@ export default function SettingsPage() {
 
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <Label>History Retention</Label>
+                  <Label>{t('History Retention')}</Label>
                   <span className="text-sm text-muted-foreground">{historyRetention} hours</span>
                 </div>
                 <Slider
@@ -402,13 +406,13 @@ export default function SettingsPage() {
 
           {/* Behavior */}
           <section className="space-y-4">
-            <h2 className="text-lg font-semibold">Behavior</h2>
+            <h2 className="text-lg font-semibold">{t('Behavior')}</h2>
             <div className="p-4 rounded-xl border border-border space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <Label>Auto-download results</Label>
+                  <Label>{t('Auto-download results')}</Label>
                   <p className="text-sm text-muted-foreground">
-                    Automatically download processed files
+                    {t('Automatically download processed files')}
                   </p>
                 </div>
                 <Switch
@@ -419,9 +423,9 @@ export default function SettingsPage() {
 
               <div className="flex items-center justify-between">
                 <div>
-                  <Label>Delete originals after processing</Label>
+                  <Label>{t('Delete originals after processing')}</Label>
                   <p className="text-sm text-muted-foreground">
-                    Remove source files after successful processing
+                    {t('Remove source files after successful processing')}
                   </p>
                 </div>
                 <Switch
@@ -436,11 +440,11 @@ export default function SettingsPage() {
           <div className="flex gap-4">
             <Button onClick={saveSettings} className="flex-1">
               <Save className="h-4 w-4 mr-2" />
-              Save Settings
+              {t('Save Settings')}
             </Button>
             <Button variant="outline" onClick={resetSettings}>
               <RotateCcw className="h-4 w-4 mr-2" />
-              Reset to Defaults
+              {t('Reset to Defaults')}
             </Button>
           </div>
         </motion.div>

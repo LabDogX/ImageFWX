@@ -15,6 +15,12 @@ read-only NAS photo browser to a Next.js, FastAPI, PostgreSQL, and Redis stack.
 
 ## Highlights
 
+### Bilingual interface
+
+- Switch the web interface between English and Simplified Chinese from the
+  language control in the header. The selected language is stored locally in
+  the browser, and Chinese-language browsers default to Simplified Chinese.
+
 ### Frames and borders
 
 - Independent or linked top/right/bottom/left margins in pixels or percent of
@@ -83,7 +89,7 @@ Default public ports:
 - Swagger UI: `http://localhost:8012/docs`
 - ReDoc: `http://localhost:8012/redoc`
 
-## NAS / Feiniu deployment
+## NAS / FnOS deployment
 
 ImageFWX uses the same `docker-compose.yml` for Docker-only and NAS setups.
 For NAS import, set these values in `.env`, then run the normal start command:

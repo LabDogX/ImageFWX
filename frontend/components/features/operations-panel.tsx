@@ -30,8 +30,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import Editor from '@monaco-editor/react';
+import { useLocale } from '@/components/providers/locale-provider';
 
 export function OperationsPanel() {
+  const { t } = useLocale();
   const { 
     activeCategory, 
     setActiveCategory,
@@ -201,7 +203,7 @@ export function OperationsPanel() {
   const handleApply = async () => {
     const validIds = getValidSelectedIds();
     if (validIds.length === 0) {
-      toast.error('No images selected');
+      toast.error(t('No images selected'));
       return;
     }
 
@@ -260,7 +262,7 @@ export function OperationsPanel() {
       }
 
       if (ops.length === 0) {
-        toast.error('No operations to apply');
+        toast.error(t('No operations to apply'));
         setIsProcessing(false);
         return;
       }
@@ -291,7 +293,7 @@ export function OperationsPanel() {
       await refreshImages();
 
     } catch (error: any) {
-      toast.error('Processing failed', { description: error.message });
+      toast.error(t('Processing failed'), { description: error.message });
     } finally {
       setIsProcessing(false);
     }
@@ -301,7 +303,7 @@ export function OperationsPanel() {
   const handleQuickRotate = async (angle: number) => {
     const validIds = getValidSelectedIds();
     if (validIds.length === 0) {
-      toast.error('No images selected');
+      toast.error(t('No images selected'));
       return;
     }
 
@@ -336,7 +338,7 @@ export function OperationsPanel() {
   const handleFlip = async (direction: 'horizontal' | 'vertical') => {
     const validIds = getValidSelectedIds();
     if (validIds.length === 0) {
-      toast.error('No images selected');
+      toast.error(t('No images selected'));
       return;
     }
 
@@ -375,11 +377,11 @@ export function OperationsPanel() {
     >
       {/* Header */}
       <div className="p-4 border-b border-border">
-        <h2 className="font-semibold text-foreground">Quick Operations</h2>
+        <h2 className="font-semibold text-foreground">{t('Quick Operations')}</h2>
         <p className="text-sm text-muted-foreground mt-1">
           {displaySelectedCount > 0 
-            ? `${displaySelectedCount} image(s) selected` 
-            : 'Select images to process'}
+            ? t('{count} image(s) selected', { count: displaySelectedCount })
+            : t('Select images to process')}
         </p>
       </div>
 
@@ -387,24 +389,24 @@ export function OperationsPanel() {
       <ScrollArea className="flex-1 p-4">
         <Tabs value={activeCategory} onValueChange={setActiveCategory}>
           <TabsList className="grid grid-cols-4 w-full mb-4">
-            <TabsTrigger value="resize">Resize</TabsTrigger>
-            <TabsTrigger value="rotate">Rotate</TabsTrigger>
-            <TabsTrigger value="watermark">Text</TabsTrigger>
-            <TabsTrigger value="advanced">Terminal</TabsTrigger>
+            <TabsTrigger value="resize">{t('Resize')}</TabsTrigger>
+            <TabsTrigger value="rotate">{t('Rotate')}</TabsTrigger>
+            <TabsTrigger value="watermark">{t('Text')}</TabsTrigger>
+            <TabsTrigger value="advanced">{t('Terminal')}</TabsTrigger>
           </TabsList>
 
           {/* Resize Tab */}
           <TabsContent value="resize" className="space-y-4 mt-4">
             <Tabs value={resizeMode} onValueChange={(v) => setResizeMode(v as any)}>
               <TabsList className="w-full">
-                <TabsTrigger value="dimensions" className="flex-1">Dimensions</TabsTrigger>
-                <TabsTrigger value="percent" className="flex-1">Percentage</TabsTrigger>
+                <TabsTrigger value="dimensions" className="flex-1">{t('Dimensions')}</TabsTrigger>
+                <TabsTrigger value="percent" className="flex-1">{t('Percentage')}</TabsTrigger>
               </TabsList>
 
               <TabsContent value="dimensions" className="space-y-4 mt-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-xs text-muted-foreground">Width</Label>
+                    <Label className="text-xs text-muted-foreground">{t('Width')}</Label>
                     <Input
                       type="number"
                       value={width}
@@ -413,7 +415,7 @@ export function OperationsPanel() {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs text-muted-foreground">Height</Label>
+                    <Label className="text-xs text-muted-foreground">{t('Height')}</Label>
                     <Input
                       type="number"
                       value={height}

@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { ImageEditor } from './image-editor';
+import { useLocale } from '@/components/providers/locale-provider';
 
 interface ImageCardProps {
   image: ImageFile;
@@ -45,6 +46,7 @@ interface ImageCardProps {
 }
 
 function ImageCard({ image, selected, onToggle, onDelete, onPreview, onEdit }: ImageCardProps) {
+  const { t } = useLocale();
   const [imgError, setImgError] = useState(false);
   const [useFallback, setUseFallback] = useState(false);
   
@@ -122,7 +124,7 @@ function ImageCard({ image, selected, onToggle, onDelete, onPreview, onEdit }: I
             e.stopPropagation();
             onEdit();
           }}
-          title="Edit"
+          title={t('Edit')}
         >
           <Edit3 className="h-3.5 w-3.5" />
         </Button>
@@ -134,7 +136,7 @@ function ImageCard({ image, selected, onToggle, onDelete, onPreview, onEdit }: I
             e.stopPropagation();
             onPreview();
           }}
-          title="Info"
+          title={t('Info')}
         >
           <Info className="h-3.5 w-3.5" />
         </Button>
@@ -146,7 +148,7 @@ function ImageCard({ image, selected, onToggle, onDelete, onPreview, onEdit }: I
             e.stopPropagation();
             onDelete();
           }}
-          title="Delete"
+          title={t('Delete')}
         >
           <Trash2 className="h-3.5 w-3.5" />
         </Button>
@@ -180,6 +182,7 @@ function ImageCard({ image, selected, onToggle, onDelete, onPreview, onEdit }: I
 }
 
 export function ImageGallery() {
+  const { t } = useLocale();
   const { 
     images, 
     setImages, 
@@ -264,14 +267,14 @@ export function ImageGallery() {
 
     try {
       await projectsApi.addImages(parseInt(selectedProjectId), validIds);
-      toast.success(`Added ${validIds.length} image(s) to project`);
+      toast.success(t('Added {count} image(s) to project', { count: validIds.length }));
       setShowAddToProjectDialog(false);
       setSelectedProjectId('');
       clearSelection();
       await refreshImages();
       await refreshProjects();
     } catch (error) {
-      toast.error('Failed to add images to project');
+      toast.error(t('Failed to add images to project'));
     }
   };
 
@@ -282,12 +285,12 @@ export function ImageGallery() {
 
     try {
       await projectsApi.removeImages(validIds);
-      toast.success(`Removed ${validIds.length} image(s) from project`);
+      toast.success(t('Removed {count} image(s) from project', { count: validIds.length }));
       clearSelection();
       await refreshImages();
       await refreshProjects();
     } catch (error) {
-      toast.error('Failed to remove images from project');
+      toast.error(t('Failed to remove images from project'));
     }
   };
 
@@ -345,7 +348,7 @@ export function ImageGallery() {
     if (validIds.length === 0) return;
     
     const count = validIds.length;
-    if (!confirm(`Are you sure you want to delete ${count} image${count > 1 ? 's' : ''}?`)) {
+    if (!confirm(t('Are you sure you want to delete {count} image(s)?', { count }))) {
       return;
     }
     
@@ -360,9 +363,9 @@ export function ImageGallery() {
       // Update project counts
       await refreshProjects();
       
-      toast.success(`Deleted ${count} image${count > 1 ? 's' : ''}`);
+      toast.success(t('Deleted {count} image(s)', { count }));
     } catch (error) {
-      toast.error('Failed to delete some images');
+      toast.error(t('Failed to delete some images'));
       // Refresh to get current state
       await refreshImages();
     }
@@ -384,9 +387,9 @@ export function ImageGallery() {
     return (
       <div className="text-center py-12">
         <FolderMinus className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-        <p className="text-muted-foreground">No images in this project</p>
+        <p className="text-muted-foreground">{t('No images in this project')}</p>
         <p className="text-sm text-muted-foreground/70 mt-1">
-          Select images from "All Images" and add them to this project
+          {t('Select images from "All Images" and add them to this project')}
         </p>
       </div>
     );
@@ -415,7 +418,7 @@ export function ImageGallery() {
               onClick={selectAllFiltered}
               disabled={allFilteredSelected || filteredImages.length === 0}
             >
-              Select All{activeProjectId ? ' in Project' : ''}
+              {t('Select All')}{activeProjectId ? ` ${t('Project')}` : ''}
             </Button>
             {displaySelectedCount > 0 && (
               <Button
@@ -423,12 +426,12 @@ export function ImageGallery() {
                 size="sm"
                 onClick={clearSelection}
               >
-                Clear
+                {t('Clear')}
               </Button>
             )}
             <span className="text-sm text-muted-foreground whitespace-nowrap">
-              {displaySelectedCount > 0 ? `${displaySelectedCount} selected` : ''}
-              {activeProjectId && ` • ${filteredImages.length} in project`}
+              {displaySelectedCount > 0 ? t('{count} selected', { count: displaySelectedCount }) : ''}
+              {activeProjectId && ` • ${t('{count} in project', { count: filteredImages.length })}`}
             </span>
           </div>
           
@@ -444,8 +447,8 @@ export function ImageGallery() {
                     className="gap-1.5"
                   >
                     <FolderPlus className="h-4 w-4" />
-                    <span className="hidden sm:inline">Add to Project</span>
-                    <span className="sm:hidden">Project</span>
+                    <span className="hidden sm:inline">{t('Add to Project')}</span>
+                    <span className="sm:hidden">{t('Project')}</span>
                   </Button>
                   {activeProjectId && (
                     <Button
@@ -455,7 +458,7 @@ export function ImageGallery() {
                       className="gap-1.5"
                     >
                       <FolderMinus className="h-4 w-4" />
-                      <span className="hidden sm:inline">Remove</span>
+                      <span className="hidden sm:inline">{t('Remove')}</span>
                     </Button>
                   )}
                 </>
@@ -467,7 +470,7 @@ export function ImageGallery() {
                 className="gap-1.5"
               >
                 <Download className="h-4 w-4" />
-                <span className="hidden sm:inline">Download</span>
+                <span className="hidden sm:inline">{t('Download')}</span>
                 {displaySelectedCount > 1 && <span className="text-xs">({displaySelectedCount})</span>}
               </Button>
               <Button
@@ -477,7 +480,7 @@ export function ImageGallery() {
                 className="gap-1.5 text-destructive hover:bg-destructive hover:text-destructive-foreground"
               >
                 <Trash2 className="h-4 w-4" />
-                <span className="hidden sm:inline">Delete</span>
+                <span className="hidden sm:inline">{t('Delete')}</span>
                 {displaySelectedCount > 1 && <span className="text-xs">({displaySelectedCount})</span>}
               </Button>
             </div>
@@ -528,23 +531,23 @@ export function ImageGallery() {
                 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
                   <div>
-                    <p className="text-muted-foreground">Format</p>
-                    <p className="font-medium">{previewImage.format || 'Unknown'}</p>
+                    <p className="text-muted-foreground">{t('Format')}</p>
+                    <p className="font-medium">{previewImage.format || t('Unknown')}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Size</p>
+                    <p className="text-muted-foreground">{t('Size')}</p>
                     <p className="font-medium">{formatFileSize(previewImage.fileSize)}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Dimensions</p>
+                    <p className="text-muted-foreground">{t('Dimensions')}</p>
                     <p className="font-medium">
                       {previewImage.width && previewImage.height 
                         ? `${previewImage.width} × ${previewImage.height}` 
-                        : 'Unknown'}
+                        : t('Unknown')}
                     </p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Type</p>
+                    <p className="text-muted-foreground">{t('Type')}</p>
                     <p className="font-medium">{previewImage.mimeType}</p>
                   </div>
                 </div>
@@ -558,7 +561,7 @@ export function ImageGallery() {
                     }}
                   >
                     <Edit3 className="h-4 w-4 mr-2" />
-                    Edit Image
+                    {t('Edit Image')}
                   </Button>
                 </div>
               </div>
@@ -580,12 +583,12 @@ export function ImageGallery() {
       <Dialog open={showAddToProjectDialog} onOpenChange={setShowAddToProjectDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add to Project</DialogTitle>
+            <DialogTitle>{t('Add to Project')}</DialogTitle>
           </DialogHeader>
           <div className="py-4">
             <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
               <SelectTrigger>
-                <SelectValue placeholder="Select a project..." />
+                <SelectValue placeholder={t('Select a project...')} />
               </SelectTrigger>
               <SelectContent>
                 {projects.map((project) => (
@@ -604,10 +607,10 @@ export function ImageGallery() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddToProjectDialog(false)}>
-              Cancel
+              {t('Cancel')}
             </Button>
             <Button onClick={handleAddToProject} disabled={!selectedProjectId || displaySelectedCount === 0}>
-              Add {displaySelectedCount} image{displaySelectedCount !== 1 ? 's' : ''}
+              {t('Add {count} image(s)', { count: displaySelectedCount })}
             </Button>
           </DialogFooter>
         </DialogContent>

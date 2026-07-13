@@ -32,18 +32,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { projectsApi } from '@/lib/api';
-
-interface SidebarItem {
-  id: string;
-  label: string;
-  icon: React.ElementType;
-  href?: string;
-}
-
-const bottomItems: SidebarItem[] = [
-  { id: 'history', label: 'History', icon: History, href: '/history' },
-  { id: 'settings', label: 'Settings', icon: Settings, href: '/settings' },
-];
+import { useLocale } from '@/components/providers/locale-provider';
 
 const PROJECT_COLORS = [
   '#6366f1', // indigo
@@ -59,6 +48,7 @@ const PROJECT_COLORS = [
 ];
 
 export function Sidebar() {
+  const { t } = useLocale();
   const { 
     sidebarOpen, 
     setSidebarOpen, 
@@ -102,7 +92,7 @@ export function Sidebar() {
 
   const handleCreateProject = async () => {
     if (!newProjectName.trim()) {
-      toast.error('Please enter a project name');
+      toast.error(t('Please enter a project name'));
       return;
     }
 
@@ -111,9 +101,9 @@ export function Sidebar() {
       addProject(project);
       setShowNewDialog(false);
       setNewProjectName('');
-      toast.success('Project created!');
+      toast.success(t('Project created!'));
     } catch (error) {
-      toast.error('Failed to create project');
+      toast.error(t('Failed to create project'));
     }
   };
 
@@ -128,21 +118,21 @@ export function Sidebar() {
       updateProject(editingProjectId, updated);
       setShowEditDialog(false);
       setEditingProjectId(null);
-      toast.success('Project updated!');
+      toast.success(t('Project updated!'));
     } catch (error) {
-      toast.error('Failed to update project');
+      toast.error(t('Failed to update project'));
     }
   };
 
   const handleDeleteProject = async (projectId: number) => {
-    if (!confirm('Delete this project? Images will not be deleted.')) return;
+    if (!confirm(t('Delete this project? Images will not be deleted.'))) return;
 
     try {
       await projectsApi.delete(projectId);
       removeProject(projectId);
-      toast.success('Project deleted');
+      toast.success(t('Project deleted'));
     } catch (error) {
-      toast.error('Failed to delete project');
+      toast.error(t('Failed to delete project'));
     }
   };
 
@@ -212,7 +202,7 @@ export function Sidebar() {
             <div className="space-y-1">
               <div className="flex items-center justify-between px-3 py-2">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Projects
+                  {t('Projects')}
                 </p>
                 {token && (
                   <Button
@@ -240,8 +230,8 @@ export function Sidebar() {
               >
                 <Images className="h-4 w-4 shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <p className="truncate">All Images</p>
-                  <p className="text-xs text-muted-foreground">View all uploaded images</p>
+                  <p className="truncate">{t('All Images')}</p>
+                  <p className="text-xs text-muted-foreground">{t('View all uploaded images')}</p>
                 </div>
               </button>
 
@@ -252,14 +242,14 @@ export function Sidebar() {
               ) : !token ? (
                 <div className="px-3 py-6 text-center">
                   <p className="text-sm text-muted-foreground">
-                    Log in to create projects and organize your images
+                    {t('Log in to create projects and organize your images')}
                   </p>
                 </div>
               ) : projects.length === 0 ? (
                 <div className="px-3 py-6 text-center">
                   <Folder className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
                   <p className="text-sm text-muted-foreground">
-                    No projects yet
+                    {t('No projects yet')}
                   </p>
                   <Button
                     variant="outline"
@@ -272,7 +262,7 @@ export function Sidebar() {
                     }}
                   >
                     <FolderPlus className="h-4 w-4 mr-2" />
-                    Create Project
+                    {t('Create Project')}
                   </Button>
                 </div>
               ) : (
@@ -294,7 +284,7 @@ export function Sidebar() {
                     <div className="flex-1 min-w-0">
                       <p className="truncate text-sm font-medium">{project.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {project.image_count} image{project.image_count !== 1 ? 's' : ''}
+                        {t(project.image_count === 1 ? '{count} image' : '{count} images', { count: project.image_count })}
                       </p>
                     </div>
                     <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
@@ -329,7 +319,10 @@ export function Sidebar() {
 
           {/* Bottom items */}
           <div className="border-t border-border px-3 py-3 space-y-1">
-            {bottomItems.map((item) => (
+            {[
+              { id: 'history', label: t('History'), icon: History, href: '/history' },
+              { id: 'settings', label: t('Settings'), icon: Settings, href: '/settings' },
+            ].map((item) => (
               <Link
                 key={item.id}
                 href={item.href!}
@@ -359,15 +352,15 @@ export function Sidebar() {
       <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create New Project</DialogTitle>
+            <DialogTitle>{t('Create New Project')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Project Name</Label>
+              <Label>{t('Project Name')}</Label>
               <Input
                 value={newProjectName}
                 onChange={(e) => setNewProjectName(e.target.value)}
-                placeholder="My Project"
+                placeholder={t('My Project')}
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleCreateProject();
@@ -375,7 +368,7 @@ export function Sidebar() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Color</Label>
+              <Label>{t('Color')}</Label>
               <div className="flex flex-wrap gap-2">
                 {PROJECT_COLORS.map((color) => (
                   <button
@@ -393,10 +386,10 @@ export function Sidebar() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowNewDialog(false)}>
-              Cancel
+              {t('Cancel')}
             </Button>
             <Button onClick={handleCreateProject}>
-              Create Project
+              {t('Create Project')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -406,22 +399,22 @@ export function Sidebar() {
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Project</DialogTitle>
+            <DialogTitle>{t('Edit Project')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Project Name</Label>
+              <Label>{t('Project Name')}</Label>
               <Input
                 value={newProjectName}
                 onChange={(e) => setNewProjectName(e.target.value)}
-                placeholder="My Project"
+                placeholder={t('My Project')}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleUpdateProject();
                 }}
               />
             </div>
             <div className="space-y-2">
-              <Label>Color</Label>
+              <Label>{t('Color')}</Label>
               <div className="flex flex-wrap gap-2">
                 {PROJECT_COLORS.map((color) => (
                   <button
@@ -439,10 +432,10 @@ export function Sidebar() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowEditDialog(false)}>
-              Cancel
+              {t('Cancel')}
             </Button>
             <Button onClick={handleUpdateProject}>
-              Save Changes
+              {t('Save Changes')}
             </Button>
           </DialogFooter>
         </DialogContent>

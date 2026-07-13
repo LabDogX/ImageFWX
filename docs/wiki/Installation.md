@@ -50,7 +50,7 @@ docker compose up -d --build
 
 The NAS browser is off by default and is designed for import-by-copy: originals
 remain read-only under `/mnt/photos`, while imports become ordinary application
-uploads and processed results go to a different writable directory. On Feiniu
+uploads and processed results go to a different writable directory. On FnOS
 NAS, configure the storage variables in `.env`. Use quoted Chinese paths and
 never point the processed output to the original-photo directory:
 

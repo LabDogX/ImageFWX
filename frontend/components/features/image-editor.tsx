@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { useStore } from "@/lib/store";
 import { BorderPanel } from "@/components/features/border-panel";
 import { BorderSettings, defaultBorderSettings } from "@/lib/border-presets";
+import { useLocale } from '@/components/providers/locale-provider';
 
 // Import proper API URL function
 import { getApiUrl } from '@/lib/api';
@@ -169,6 +170,7 @@ const watermarkFontOptions: ReadonlyArray<{ value: WatermarkFont; label: string 
 ];
 
 export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
+  const { t } = useLocale();
   // PDF check
   const isPdf = image.mimeType?.includes('pdf') || image.originalFilename.toLowerCase().endsWith('.pdf');
   
@@ -820,7 +822,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
   const SaveButton = () => (
     hasUnsavedChanges ? (
       <Button className="w-full mt-4" variant="outline" onClick={handleSave} disabled={isProcessing}>
-        <Save className="h-4 w-4 mr-2" /> Save Changes
+        <Save className="h-4 w-4 mr-2" /> {t('Save Changes')}
       </Button>
     ) : null
   );
@@ -847,7 +849,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                 <h2 
                   className="text-lg font-semibold truncate max-w-sm cursor-pointer hover:text-blue-600 transition-colors group flex items-center gap-1"
                   onClick={startEditingFilename}
-                  title="Click to rename"
+                  title={t('Click to rename')}
                 >
                   {displayFilename}
                   <span className="text-gray-400 opacity-0 group-hover:opacity-100 text-xs transition-opacity">✎</span>
@@ -856,17 +858,17 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
               {hasUnsavedChanges && (
                 <span className="text-xs bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 px-2 py-1 rounded-full flex items-center gap-1">
                   <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
-                  Unsaved
+                  {t('Unsaved')}
                 </span>
               )}
-              {cropMode && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">Crop Mode</span>}
+              {cropMode && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">{t('Crop Mode')}</span>}
               {isPdf && <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full flex items-center gap-1"><FileImage className="h-3 w-3" /> PDF</span>}
             </div>
             <div className="flex items-center gap-2">
               {hasUnsavedChanges && (
-                <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full">Unsaved</span>
+                <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full">{t('Unsaved')}</span>
               )}
-              <Button variant="ghost" size="icon" onClick={resetAll} title="Reset"><Undo2 className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="icon" onClick={resetAll} title={t('Reset')}><Undo2 className="h-4 w-4" /></Button>
               <Button variant="ghost" size="icon" onClick={handleClose}><X className="h-5 w-5" /></Button>
             </div>
           </div>
@@ -979,10 +981,10 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
             <div className="w-80 border-l bg-background flex flex-col">
               {/* Quick actions */}
               <div className="flex items-center justify-around p-3 border-b">
-                <Button variant="ghost" size="icon" onClick={rotateLeft} title="Rotate left"><RotateCcw className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" onClick={rotateRight} title="Rotate right"><RotateCw className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" onClick={() => setState(s => ({ ...s, flipH: !s.flipH }))} title="Flip H"><FlipHorizontal className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" onClick={() => setState(s => ({ ...s, flipV: !s.flipV }))} title="Flip V"><FlipVertical className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" onClick={rotateLeft} title={t('Rotate left')}><RotateCcw className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" onClick={rotateRight} title={t('Rotate right')}><RotateCw className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" onClick={() => setState(s => ({ ...s, flipH: !s.flipH }))} title={t('Flip H')}><FlipHorizontal className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" onClick={() => setState(s => ({ ...s, flipV: !s.flipV }))} title={t('Flip V')}><FlipVertical className="h-4 w-4" /></Button>
                 <Button variant={cropMode ? "default" : "ghost"} size="icon" onClick={() => { 
                   if (!cropMode) {
                     setCropMode(true);
@@ -991,19 +993,19 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                     setCropMode(false);
                     setCropArea(null);
                   }
-                }} title="Crop">
+                }} title={t('Crop')}>
                   <CropIcon className="h-4 w-4" />
                 </Button>
               </div>
               
               <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col">
                 <TabsList className="grid grid-cols-3 mx-3 mt-3 h-auto">
-                  <TabsTrigger value="adjust" className="text-xs"><Sliders className="h-3.5 w-3.5 mr-1" />Adjust</TabsTrigger>
-                  <TabsTrigger value="resize" className="text-xs"><Maximize2 className="h-3.5 w-3.5 mr-1" />Resize</TabsTrigger>
-                  <TabsTrigger value="crop" className="text-xs"><Square className="h-3.5 w-3.5 mr-1" />Crop</TabsTrigger>
-                  <TabsTrigger value="text" className="text-xs"><Type className="h-3.5 w-3.5 mr-1" />Text</TabsTrigger>
-                  <TabsTrigger value="frame" className="text-xs"><Square className="h-3.5 w-3.5 mr-1" />Frame</TabsTrigger>
-                  <TabsTrigger value="ai" className="text-xs"><Wand2 className="h-3.5 w-3.5 mr-1" />AI</TabsTrigger>
+                  <TabsTrigger value="adjust" className="text-xs"><Sliders className="h-3.5 w-3.5 mr-1" />{t('Adjust')}</TabsTrigger>
+                  <TabsTrigger value="resize" className="text-xs"><Maximize2 className="h-3.5 w-3.5 mr-1" />{t('Resize')}</TabsTrigger>
+                  <TabsTrigger value="crop" className="text-xs"><Square className="h-3.5 w-3.5 mr-1" />{t('Crop')}</TabsTrigger>
+                  <TabsTrigger value="text" className="text-xs"><Type className="h-3.5 w-3.5 mr-1" />{t('Text')}</TabsTrigger>
+                  <TabsTrigger value="frame" className="text-xs"><Square className="h-3.5 w-3.5 mr-1" />{t('Frame')}</TabsTrigger>
+                  <TabsTrigger value="ai" className="text-xs"><Wand2 className="h-3.5 w-3.5 mr-1" />{t('AI')}</TabsTrigger>
                 </TabsList>
                 
                 <div className="flex-1 overflow-y-auto p-4">
@@ -1018,7 +1020,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                     ].map(({ label, icon: Icon, key, min, max, def, unit }) => (
                       <div key={key} className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <Label className="text-xs flex items-center gap-2">{Icon && <Icon className="h-3.5 w-3.5" />} {label}</Label>
+                          <Label className="text-xs flex items-center gap-2">{Icon && <Icon className="h-3.5 w-3.5" />} {t(label)}</Label>
                           <span className="text-xs text-muted-foreground">
                             {state[key as keyof EditorState] as number}{unit}
                           </span>

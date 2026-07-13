@@ -39,9 +39,12 @@ import { authApi } from '@/lib/api';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { validatePassword, isPasswordValid } from '@/lib/password';
+import { LocaleSwitcher } from '@/components/layout/locale-switcher';
+import { useLocale } from '@/components/providers/locale-provider';
 
 export function Header() {
   const { theme, setTheme } = useTheme();
+  const { t } = useLocale();
   const { 
     user, 
     setSidebarOpen, 
@@ -111,19 +114,19 @@ export function Header() {
 
   const handleAuth = async () => {
     if (!email || !password) {
-      toast.error('Please fill in all fields');
+      toast.error(t('Please fill in all fields'));
       return;
     }
 
     // Validate password on registration
     if (!isLogin && !passwordValid) {
-      toast.error('Password does not meet requirements');
+      toast.error(t('Password does not meet requirements'));
       return;
     }
 
     // Confirm passwords match on registration
     if (!isLogin && password !== confirmPassword) {
-      toast.error('Passwords do not match');
+      toast.error(t('Passwords do not match'));
       return;
     }
 
@@ -133,12 +136,12 @@ export function Header() {
         const data = await authApi.login(email, password);
         useStore.getState().setToken(data.access_token);
         useStore.getState().setUser(data.user);
-        toast.success('Welcome back!');
+        toast.success(t('Welcome back!'));
       } else {
         const data = await authApi.register(email, password, name);
         useStore.getState().setToken(data.access_token);
         useStore.getState().setUser(data.user);
-        toast.success('Account created successfully!');
+        toast.success(t('Account created successfully!'));
       }
       setShowAuthDialog(false);
       setEmail('');
@@ -150,9 +153,9 @@ export function Header() {
       // Handle Pydantic validation errors
       if (Array.isArray(detail)) {
         const msg = detail.map((d: any) => d.msg || d.message).join(', ');
-        toast.error(msg || 'Validation failed');
+        toast.error(msg || t('Authentication failed'));
       } else {
-        toast.error(detail || 'Authentication failed');
+        toast.error(detail || t('Authentication failed'));
       }
     } finally {
       setLoading(false);
@@ -179,14 +182,14 @@ export function Header() {
         `redirect_uri=${encodeURIComponent(redirectUri)}`
       );
     } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Google login failed');
+      toast.error(error.response?.data?.detail || t('Google login failed'));
       setGoogleLoading(false);
     }
   };
 
   const handleLogout = () => {
     logout();
-    toast.success('Logged out successfully');
+    toast.success(t('Logged out successfully'));
   };
 
   return (
@@ -205,7 +208,7 @@ export function Header() {
         {selectedCount > 0 && (
           <div className="flex items-center gap-2 animate-fade-in">
             <span className="text-sm text-muted-foreground">
-              {selectedCount} selected
+              {t('{count} selected', { count: selectedCount })}
             </span>
             <Button
               variant="ghost"
@@ -213,7 +216,7 @@ export function Header() {
               onClick={clearSelection}
               className="text-xs"
             >
-              Clear
+              {t('Clear')}
             </Button>
           </div>
         )}
@@ -221,6 +224,7 @@ export function Header() {
 
       {/* Right side */}
       <div className="flex items-center gap-2">
+        <LocaleSwitcher />
         {/* Theme toggle */}
         <Select value={theme} onValueChange={setTheme}>
           <SelectTrigger className="w-[110px] h-9">
@@ -230,19 +234,19 @@ export function Header() {
             <SelectItem value="light">
               <div className="flex items-center gap-2">
                 <Sun className="h-4 w-4" />
-                <span>Light</span>
+                <span>{t('Light')}</span>
               </div>
             </SelectItem>
             <SelectItem value="dark">
               <div className="flex items-center gap-2">
                 <Moon className="h-4 w-4" />
-                <span>Dark</span>
+                <span>{t('Dark')}</span>
               </div>
             </SelectItem>
             <SelectItem value="system">
               <div className="flex items-center gap-2">
                 <Monitor className="h-4 w-4" />
-                <span>System</span>
+                <span>{t('System')}</span>
               </div>
             </SelectItem>
           </SelectContent>
@@ -271,32 +275,32 @@ export function Header() {
             <DialogTrigger asChild>
               <Button variant="outline" size="sm">
                 <User className="h-4 w-4 mr-2" />
-                Sign In
+                {t('Sign In')}
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[400px]">
               <DialogHeader>
-                <DialogTitle>{isLogin ? 'Welcome back' : 'Create account'}</DialogTitle>
+                <DialogTitle>{isLogin ? t('Welcome back') : t('Create account')}</DialogTitle>
                 <DialogDescription>
                   {isLogin 
-                    ? 'Sign in to save your settings and history' 
-                    : 'Create an account to get started'}
+                    ? t('Sign in to save your settings and history')
+                    : t('Create an account to get started')}
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 {!isLogin && (
                   <div className="grid gap-2">
-                    <Label htmlFor="name">Name</Label>
+                    <Label htmlFor="name">{t('Name')}</Label>
                     <Input
                       id="name"
-                      placeholder="Your name"
+                      placeholder={t('Your name')}
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                     />
                   </div>
                 )}
                 <div className="grid gap-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">{t('Email')}</Label>
                   <Input
                     id="email"
                     type="email"
@@ -306,7 +310,7 @@ export function Header() {
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password">{t('Password')}</Label>
                   <Input
                     id="password"
                     type="password"
@@ -319,26 +323,26 @@ export function Header() {
                   {/* Password requirements - only show during registration */}
                   {!isLogin && password.length > 0 && (
                     <div className="mt-2 p-3 bg-muted rounded-lg text-xs space-y-1">
-                      <p className="font-medium text-muted-foreground mb-2">Password requirements:</p>
+                      <p className="font-medium text-muted-foreground mb-2">{t('Password requirements:')}</p>
                       <div className={cn("flex items-center gap-2", passwordChecks.minLength ? "text-green-600" : "text-muted-foreground")}>
                         {passwordChecks.minLength ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-                        At least 8 characters
+                        {t('At least 8 characters')}
                       </div>
                       <div className={cn("flex items-center gap-2", passwordChecks.hasLower ? "text-green-600" : "text-muted-foreground")}>
                         {passwordChecks.hasLower ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-                        One lowercase letter
+                        {t('One lowercase letter')}
                       </div>
                       <div className={cn("flex items-center gap-2", passwordChecks.hasUpper ? "text-green-600" : "text-muted-foreground")}>
                         {passwordChecks.hasUpper ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-                        One uppercase letter
+                        {t('One uppercase letter')}
                       </div>
                       <div className={cn("flex items-center gap-2", passwordChecks.hasDigit ? "text-green-600" : "text-muted-foreground")}>
                         {passwordChecks.hasDigit ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-                        One digit
+                        {t('One digit')}
                       </div>
                       <div className={cn("flex items-center gap-2", passwordChecks.hasSpecial ? "text-green-600" : "text-muted-foreground")}>
                         {passwordChecks.hasSpecial ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-                        One special character (!@#$%^&*...)
+                        {t('One special character (!@#$%^&*...)')}
                       </div>
                     </div>
                   )}
@@ -347,7 +351,7 @@ export function Header() {
                 {/* Confirm password - only during registration */}
                 {!isLogin && (
                   <div className="grid gap-2">
-                    <Label htmlFor="confirmPassword">Confirm Password</Label>
+                    <Label htmlFor="confirmPassword">{t('Confirm Password')}</Label>
                     <Input
                       id="confirmPassword"
                       type="password"
@@ -357,7 +361,7 @@ export function Header() {
                       onKeyDown={(e) => e.key === 'Enter' && handleAuth()}
                     />
                     {confirmPassword.length > 0 && !passwordsMatch && (
-                      <p className="text-xs text-red-500">Passwords do not match</p>
+                      <p className="text-xs text-red-500">{t('Passwords do not match')}</p>
                     )}
                   </div>
                 )}
@@ -368,7 +372,7 @@ export function Header() {
                   disabled={loading || (!isLogin && (!passwordValid || !passwordsMatch))}
                   className="w-full"
                 >
-                  {loading ? 'Loading...' : isLogin ? 'Sign In' : 'Create Account'}
+                  {loading ? t('Loading...') : isLogin ? t('Sign In') : t('Create Account')}
                 </Button>
                 
                 {/* Google OAuth */}
@@ -379,7 +383,7 @@ export function Header() {
                         <span className="w-full border-t" />
                       </div>
                       <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-background px-2 text-muted-foreground">Or</span>
+                        <span className="bg-background px-2 text-muted-foreground">{t('Or')}</span>
                       </div>
                     </div>
                     <Button
@@ -389,7 +393,7 @@ export function Header() {
                       className="w-full"
                     >
                       {googleLoading ? (
-                        'Redirecting...'
+                        t('Redirecting...')
                       ) : (
                         <>
                           <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24">
@@ -410,7 +414,7 @@ export function Header() {
                               d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                             />
                           </svg>
-                          Continue with Google
+                          {t('Continue with Google')}
                         </>
                       )}
                     </Button>
@@ -427,20 +431,20 @@ export function Header() {
                     className="w-full text-sm"
                   >
                     {isLogin 
-                      ? "Don't have an account? Sign up" 
-                      : 'Already have an account? Sign in'}
+                      ? t("Don't have an account? Sign up")
+                      : t('Already have an account? Sign in')}
                   </Button>
                 ) : (
                   !isLogin && (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground justify-center">
                       <AlertCircle className="h-4 w-4" />
-                      Registration is disabled
+                      {t('Registration is disabled')}
                     </div>
                   )
                 )}
                 {!registrationEnabled && isLogin && (
                   <p className="text-xs text-muted-foreground text-center">
-                    Registration is currently disabled. Contact administrator.
+                    {t('Registration is currently disabled. Contact administrator.')}
                   </p>
                 )}
               </DialogFooter>

@@ -13,10 +13,13 @@ import { toast } from 'sonner';
 import { authApi, settingsApi } from '@/lib/api';
 import { useStore } from '@/lib/store';
 import { isPasswordValid, passwordRequirementList } from '@/lib/password';
+import { LocaleSwitcher } from '@/components/layout/locale-switcher';
+import { useLocale } from '@/components/providers/locale-provider';
 
 export default function RegisterPage() {
   const router = useRouter();
   const { setUser, setToken } = useStore();
+  const { t } = useLocale();
   
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -39,17 +42,17 @@ export default function RegisterPage() {
     e.preventDefault();
     
     if (!email || !password) {
-      toast.error('Please fill in all required fields');
+      toast.error(t('Please fill in all required fields'));
       return;
     }
     
     if (password !== confirmPassword) {
-      toast.error('Passwords do not match');
+      toast.error(t('Passwords do not match'));
       return;
     }
     
     if (!isPasswordValid(password)) {
-      toast.error('Password does not meet all requirements');
+      toast.error(t('Password does not meet all requirements'));
       return;
     }
     
@@ -65,11 +68,11 @@ export default function RegisterPage() {
       const user = await authApi.me();
       setUser(user);
       
-      toast.success('Account created successfully!');
+      toast.success(t('Account created successfully!'));
       router.push('/');
     } catch (error: any) {
-      toast.error('Registration failed', {
-        description: error.response?.data?.detail || 'Please try again'
+      toast.error(t('Registration failed'), {
+        description: error.response?.data?.detail || t('Please try again')
       });
     } finally {
       setIsLoading(false);
@@ -89,6 +92,7 @@ export default function RegisterPage() {
   if (registrationAllowed === false) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="absolute right-4 top-4"><LocaleSwitcher /></div>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -97,7 +101,7 @@ export default function RegisterPage() {
           {/* Back button */}
           <Link href="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-8">
             <ArrowLeft className="h-4 w-4" />
-            Back to home
+            {t('Back to home')}
           </Link>
 
           {/* Card */}
@@ -121,14 +125,13 @@ export default function RegisterPage() {
               <ShieldAlert className="h-10 w-10 text-amber-500" />
             </div>
 
-            <h2 className="font-semibold mb-2">Registration disabled</h2>
+            <h2 className="font-semibold mb-2">{t('Registration disabled')}</h2>
             <p className="text-sm text-muted-foreground mb-6">
-              New account registration is currently turned off. Please contact the
-              administrator if you need access.
+              {t('New account registration is currently turned off. Please contact the administrator if you need access.')}
             </p>
 
             <Button asChild className="w-full">
-              <Link href="/login">Back to sign in</Link>
+              <Link href="/login">{t('Back to sign in')}</Link>
             </Button>
           </div>
         </motion.div>
@@ -138,6 +141,7 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="absolute right-4 top-4"><LocaleSwitcher /></div>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -146,7 +150,7 @@ export default function RegisterPage() {
         {/* Back button */}
         <Link href="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-8">
           <ArrowLeft className="h-4 w-4" />
-          Back to home
+            {t('Back to home')}
         </Link>
 
         {/* Card */}
@@ -165,7 +169,7 @@ export default function RegisterPage() {
             </div>
             <div>
               <h1 className="font-semibold">ImageMagick WebGUI</h1>
-              <p className="text-sm text-muted-foreground">Create your account</p>
+              <p className="text-sm text-muted-foreground">{t('Create your account')}</p>
             </div>
           </div>
 
@@ -174,13 +178,9 @@ export default function RegisterPage() {
             <div className="flex gap-3">
               <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
               <div className="text-sm">
-                <p className="font-medium text-amber-800 dark:text-amber-400">Important notice</p>
+                <p className="font-medium text-amber-800 dark:text-amber-400">{t('Important notice')}</p>
                 <p className="text-amber-700 dark:text-amber-500 mt-1">
-                  Images uploaded without an account are NOT private — on a server with
-                  open access they are visible to every other anonymous visitor. Create an
-                  account to keep your images tied to you. After registering you start with
-                  a clean gallery; images you uploaded anonymously stay in the shared
-                  anonymous pool.
+                  {t('Images uploaded without an account are NOT private — on a server with open access they are visible to every other anonymous visitor. Create an account to keep your images tied to you. After registering you start with a clean gallery; images you uploaded anonymously stay in the shared anonymous pool.')}
                 </p>
               </div>
             </div>
@@ -189,11 +189,11 @@ export default function RegisterPage() {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label htmlFor="name">Name (optional)</Label>
+              <Label htmlFor="name">{t('Name (optional)')}</Label>
               <Input
                 id="name"
                 type="text"
-                placeholder="Your name"
+                placeholder={t('Your name')}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="mt-1"
@@ -202,7 +202,7 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <Label htmlFor="email">Email *</Label>
+              <Label htmlFor="email">{t('Email *')}</Label>
               <Input
                 id="email"
                 type="email"
@@ -216,12 +216,12 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <Label htmlFor="password">Password *</Label>
+              <Label htmlFor="password">{t('Password *')}</Label>
               <div className="relative mt-1">
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="Create a password"
+                placeholder={t('Create a password')}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   autoComplete="new-password"
@@ -252,11 +252,11 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <Label htmlFor="confirmPassword">Confirm Password *</Label>
+              <Label htmlFor="confirmPassword">{t('Confirm Password *')}</Label>
               <Input
                 id="confirmPassword"
                 type="password"
-                placeholder="Confirm your password"
+                placeholder={t('Confirm your password')}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 className="mt-1"
@@ -264,7 +264,7 @@ export default function RegisterPage() {
                 required
               />
               {confirmPassword && password !== confirmPassword && (
-                <p className="text-xs text-red-500 mt-1">Passwords do not match</p>
+                <p className="text-xs text-red-500 mt-1">{t('Passwords do not match')}</p>
               )}
             </div>
 
@@ -272,19 +272,19 @@ export default function RegisterPage() {
               {isLoading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Creating account...
+                  {t('Creating account...')}
                 </>
               ) : (
-                'Create account'
+                t('Create account')
               )}
             </Button>
           </form>
 
           {/* Login link */}
           <p className="mt-6 text-center text-sm text-muted-foreground">
-            Already have an account?{' '}
+            {t('Already have an account?')}{' '}
             <Link href="/login" className="text-primary hover:underline">
-              Sign in
+              {t('Sign in')}
             </Link>
           </p>
         </div>

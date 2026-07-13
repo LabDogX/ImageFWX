@@ -13,6 +13,10 @@ ImageFWX 是一个基于 ImageMagick 的自托管照片成片工作台。它在 
 
 ## 核心功能
 
+### 中英文界面
+
+- 可从页面顶部的语言按钮在 English 和简体中文之间切换。选择会保存在浏览器本地；中文浏览器首次打开时默认使用简体中文。
+
 ### 相框与边框
 
 - 上、右、下、左可独立设置或联动设置；单位可选像素或每张照片短边百分比。
@@ -64,7 +68,7 @@ docker compose up -d --build
 - Swagger：`http://localhost:8012/docs`
 - ReDoc：`http://localhost:8012/redoc`
 
-## NAS / 飞牛部署
+## NAS / FnOS 部署
 
 Docker-only 部署和 NAS 部署都只使用同一个 `docker-compose.yml`。如需 NAS 导入，在 `.env` 中填写以下内容，再使用普通启动命令：
 

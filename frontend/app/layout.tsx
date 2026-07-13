@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { ThemeProvider } from '@/components/providers/theme-provider';
 import { QueryProvider } from '@/components/providers/query-provider';
 import { SettingsProvider } from '@/components/providers/settings-provider';
+import { LocaleProvider } from '@/components/providers/locale-provider';
 import { Toaster } from '@/components/ui/sonner';
 import './globals.css';
 
@@ -41,12 +42,14 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <QueryProvider>
-            <SettingsProvider>
-              {children}
-              <Toaster richColors position="top-right" />
-            </SettingsProvider>
-          </QueryProvider>
+          <LocaleProvider>
+            <QueryProvider>
+              <SettingsProvider>
+                {children}
+                <Toaster richColors position="top-right" />
+              </SettingsProvider>
+            </QueryProvider>
+          </LocaleProvider>
         </ThemeProvider>
       </body>
     </html>

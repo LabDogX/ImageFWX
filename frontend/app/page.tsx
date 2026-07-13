@@ -12,9 +12,11 @@ import { useStore } from '@/lib/store';
 import { imagesApi, authApi, nasApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useLocale } from '@/components/providers/locale-provider';
 
 export default function HomePage() {
   const { images, setImages, token, setUser, sidebarOpen } = useStore();
+  const { t } = useLocale();
   const [source, setSource] = useState<'upload' | 'nas'>('upload');
   const [nasEnabled, setNasEnabled] = useState(false);
 
@@ -82,9 +84,9 @@ export default function HomePage() {
               transition={{ duration: 0.3 }}
               className="space-y-6 max-w-6xl mx-auto"
             >
-              <div className="flex gap-2" role="tablist" aria-label="Photo source">
-                <Button variant={source === 'upload' ? 'default' : 'outline'} onClick={() => setSource('upload')}>Upload</Button>
-                {nasEnabled && <Button variant={source === 'nas' ? 'default' : 'outline'} onClick={() => setSource('nas')}>NAS</Button>}
+              <div className="flex gap-2" role="tablist" aria-label={t('Photo source')}>
+                <Button variant={source === 'upload' ? 'default' : 'outline'} onClick={() => setSource('upload')}>{t('Upload')}</Button>
+                {nasEnabled && <Button variant={source === 'nas' ? 'default' : 'outline'} onClick={() => setSource('nas')}>{t('NAS')}</Button>}
               </div>
               {source === 'upload' ? <UploadZone /> : <NASBrowser />}
 
@@ -108,7 +110,7 @@ export default function HomePage() {
       {/* Mobile operations panel as drawer */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-background border-t border-border p-4">
         <div className="text-center text-sm text-muted-foreground">
-          Open on desktop for full editing experience
+          {t('Open on desktop for full editing experience')}
         </div>
       </div>
     </div>

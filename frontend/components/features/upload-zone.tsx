@@ -9,6 +9,7 @@ import { useStore } from '@/lib/store';
 import { imagesApi } from '@/lib/api';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
+import { useLocale } from '@/components/providers/locale-provider';
 
 const ACCEPTED_TYPES = {
   'image/jpeg': ['.jpg', '.jpeg'],
@@ -26,6 +27,7 @@ const ACCEPTED_TYPES = {
 
 export function UploadZone() {
   const { addImages } = useStore();
+  const { t } = useLocale();
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
 
@@ -74,19 +76,19 @@ export function UploadZone() {
         }));
         
         addImages(formattedImages);
-        toast.success(`Uploaded ${response.images.length} image(s)`);
+        toast.success(t('Uploaded {count} image(s)', { count: response.images.length }));
       }
 
       if (response.failed.length > 0) {
-        toast.error(`Failed to upload ${response.failed.length} file(s)`);
+        toast.error(t('Failed to upload {count} file(s)', { count: response.failed.length }));
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Upload failed');
+      toast.error(error.response?.data?.detail || t('Upload failed'));
     } finally {
       setUploading(false);
       setProgress(0);
     }
-  }, [addImages]);
+  }, [addImages, t]);
 
   const { getRootProps, getInputProps, isDragActive, isDragAccept, isDragReject } = useDropzone({
     onDrop,
@@ -122,7 +124,7 @@ export function UploadZone() {
             >
               <Loader2 className="h-12 w-12 text-primary animate-spin" />
               <div className="space-y-2 w-48">
-                <p className="text-sm font-medium">Uploading...</p>
+                <p className="text-sm font-medium">{t('Uploading...')}</p>
                 <Progress value={progress} className="h-1.5" />
                 <p className="text-xs text-muted-foreground">{progress}%</p>
               </div>
@@ -137,7 +139,7 @@ export function UploadZone() {
             >
               <XCircle className="h-12 w-12 text-destructive" />
               <p className="text-sm font-medium text-destructive">
-                Invalid file type
+                {t('Invalid file type')}
               </p>
             </motion.div>
           ) : isDragActive ? (
@@ -154,7 +156,7 @@ export function UploadZone() {
               >
                 <Upload className="h-12 w-12 text-primary" />
               </motion.div>
-              <p className="text-sm font-medium">Drop files here</p>
+              <p className="text-sm font-medium">{t('Drop files here')}</p>
             </motion.div>
           ) : (
             <motion.div
@@ -169,10 +171,10 @@ export function UploadZone() {
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-medium">
-                  Drop images here or click to browse
+                  {t('Drop images here or click to browse')}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Supports JPG, PNG, WebP, GIF, SVG, TIFF, PDF, and more
+                  {t('Supports JPG, PNG, WebP, GIF, SVG, TIFF, PDF, and more')}
                 </p>
               </div>
             </motion.div>
