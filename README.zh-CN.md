@@ -74,11 +74,13 @@ Docker-only 部署和 NAS 部署都只使用同一个 `docker-compose.yml`。如
 
 ```env
 NAS_BROWSER_ENABLED=true
-UPLOADS_STORAGE="/vol1/1000/Docker/ImageFWX/uploads"
-PROCESSED_STORAGE="/vol1/1000/照片处理结果"
-TEMP_STORAGE="/vol1/1000/Docker/ImageFWX/temp"
-NAS_SOURCE_STORAGE="/vol1/1000/照片"
+UPLOADS_STORAGE="/path/to/imagefwx-data/uploads"
+PROCESSED_STORAGE="/path/to/processed-photos"
+TEMP_STORAGE="/path/to/imagefwx-data/temp"
+NAS_SOURCE_STORAGE="/path/to/original-photos"
 ```
+
+以上均为占位示例，不是固定的宿主机路径；路径包含空格或中文等非 ASCII 字符时，请保留双引号。
 
 ```bash
 docker compose up -d --build

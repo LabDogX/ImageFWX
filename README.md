@@ -96,11 +96,14 @@ For NAS import, set these values in `.env`, then run the normal start command:
 
 ```env
 NAS_BROWSER_ENABLED=true
-UPLOADS_STORAGE="/vol1/1000/Docker/ImageFWX/uploads"
-PROCESSED_STORAGE="/vol1/1000/照片处理结果"
-TEMP_STORAGE="/vol1/1000/Docker/ImageFWX/temp"
-NAS_SOURCE_STORAGE="/vol1/1000/照片"
+UPLOADS_STORAGE="/path/to/imagefwx-data/uploads"
+PROCESSED_STORAGE="/path/to/processed-photos"
+TEMP_STORAGE="/path/to/imagefwx-data/temp"
+NAS_SOURCE_STORAGE="/path/to/original-photos"
 ```
+
+These are placeholders, not required host paths. Quote any path containing
+spaces or non-ASCII characters.
 
 ```bash
 docker compose up -d --build

@@ -51,15 +51,16 @@ docker compose up -d --build
 The NAS browser is off by default and is designed for import-by-copy: originals
 remain read-only under `/mnt/photos`, while imports become ordinary application
 uploads and processed results go to a different writable directory. On FnOS
-NAS, configure the storage variables in `.env`. Use quoted Chinese paths and
+NAS, configure the storage variables in `.env`. The values below are
+placeholders; quote any path containing spaces or non-ASCII characters and
 never point the processed output to the original-photo directory:
 
 ```env
 NAS_BROWSER_ENABLED=true
-UPLOADS_STORAGE="/vol1/1000/Docker/ImageFWX/uploads"
-PROCESSED_STORAGE="/vol1/1000/照片处理结果"
-TEMP_STORAGE="/vol1/1000/Docker/ImageFWX/temp"
-NAS_SOURCE_STORAGE="/vol1/1000/照片"
+UPLOADS_STORAGE="/path/to/imagefwx-data/uploads"
+PROCESSED_STORAGE="/path/to/processed-photos"
+TEMP_STORAGE="/path/to/imagefwx-data/temp"
+NAS_SOURCE_STORAGE="/path/to/original-photos"
 ```
 
 Then use the same command as every other deployment:
@@ -284,7 +285,7 @@ environment:
 environment:
   - ALLOWED_ORIGINS=*  # Allow all (testing only!)
   # Or specific:
-  - ALLOWED_ORIGINS=https://example.com,http://192.168.1.100:3000
+  - ALLOWED_ORIGINS=https://example.com,http://nas.example.local:3000
 ```
 
 ---
