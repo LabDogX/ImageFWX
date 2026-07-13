@@ -131,8 +131,10 @@ RUN python3.12 -c "from rembg import new_session; new_session('birefnet-general'
 RUN python3.12 -c "from rembg import new_session; new_session('isnet-general-use')" || echo "isnet model download failed, will retry at runtime"
 RUN chown -R appuser:appuser /home/appuser/.u2net || true
 
-COPY scripts/start.sh /start.sh
-RUN chmod +x /start.sh
+# Keep the startup script inside /app, which is owned by appuser. Some NAS
+# Docker builds have reported permission issues for executable files at /.
+COPY scripts/start.sh /app/start.sh
+RUN chmod 755 /app/start.sh && chown appuser:appuser /app/start.sh
 
 USER appuser
 
@@ -144,4 +146,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 ENTRYPOINT ["/usr/bin/tini", "--"]
 # See the CPU Dockerfile: explicitly invoking Bash avoids NAS builds that lose
 # the executable bit on copied shell scripts.
-CMD ["/bin/bash", "/start.sh"]
+CMD ["/bin/bash", "/app/start.sh"]

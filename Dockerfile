@@ -127,9 +127,10 @@ ENV HOME=/home/appuser \
 RUN python -c "from rembg import new_session; new_session('isnet-general-use')" || echo "Model download failed, will retry at runtime"
 RUN chown -R appuser:appuser /home/appuser/.u2net || true
 
-# Copy startup script
-COPY scripts/start.sh /start.sh
-RUN chmod +x /start.sh
+# Keep the startup script inside /app, which is owned by appuser. Some NAS
+# Docker builds have reported permission issues for executable files at /.
+COPY scripts/start.sh /app/start.sh
+RUN chmod 755 /app/start.sh && chown appuser:appuser /app/start.sh
 
 # Switch to non-root user
 USER appuser
@@ -147,4 +148,4 @@ ENTRYPOINT ["/usr/bin/tini", "--"]
 # Run through Bash instead of executing the file directly. This remains
 # compatible with normal Docker hosts and also works when a NAS build loses the
 # executable bit on a copied shell script.
-CMD ["/bin/bash", "/start.sh"]
+CMD ["/bin/bash", "/app/start.sh"]
