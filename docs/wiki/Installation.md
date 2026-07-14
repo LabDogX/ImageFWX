@@ -77,6 +77,55 @@ directories and ensure the permission inherits to their contents (the source
 directory stays read-only). For a domain and HTTPS, use your existing reverse
 proxy and set `ALLOWED_ORIGINS` to the public HTTPS origin.
 
+### FnOS v1.2.0+ Windows ACL permission recovery
+
+FnOS v1.2.0 changed storage-space file permissions to Windows ACL. As a
+result, a Docker bind mount may be read-write at the Docker level while the
+ImageFWX process (UID/GID `10001`) still receives `Permission denied`. The
+FnOS documentation also notes that Docker directories retain POSIX ACL
+behaviour for application compatibility. See [FnOS: file permission mechanism
+and effective rules](https://help.fnnas.com/articles/v1/file/acl).
+
+Keep the original photo library separate and read-only. Put only ImageFWX's
+writable data below the Docker project directory (replace `<APP_DIR>` with the
+absolute value of `pwd -P` in the ImageFWX checkout):
+
+```bash
+APP_DIR="$(pwd -P)"
+sudo mkdir -p "$APP_DIR/data/uploads" "$APP_DIR/data/temp" "$APP_DIR/data/processed"
+sudo chown -R 10001:10001 "$APP_DIR/data"
+sudo chmod -R u+rwX "$APP_DIR/data"
+```
+
+Configure those exact absolute directories in `.env`:
+
+```env
+UPLOADS_STORAGE="<APP_DIR>/data/uploads"
+TEMP_STORAGE="<APP_DIR>/data/temp"
+PROCESSED_STORAGE="<APP_DIR>/data/processed"
+
+# Original photos only: Compose mounts this source read-only.
+NAS_SOURCE_STORAGE="/path/to/original-photos"
+```
+
+Rebuild, then verify the *actual runtime identity* rather than relying only on
+the Docker mount's `rw` flag:
+
+```bash
+sudo docker compose up -d --build
+sudo docker compose exec --user 10001:10001 app sh -lc '
+for d in /app/uploads /app/processed /tmp/imagemagick; do
+  probe=$(mktemp "$d/.imagefwx-permission.XXXXXX") &&
+  rm -f "$probe" && echo "$d: writable" || echo "$d: NOT-writable"
+done'
+```
+
+All three paths must report `writable` before uploading or importing. If a
+path remains unavailable, inspect its effective FnOS ACL in **Files → Details
+→ Permissions**: an explicit deny rule overrides inherited allow rules. Do
+not solve this by running ImageFWX as root or by making the original-photo
+mount writable.
+
 ### Storage retention
 
 ImageFWX runs a scheduled cleanup worker after initialization. It only scans

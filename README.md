@@ -116,6 +116,15 @@ inherit to their contents. Keep the original-photo mount read-only and never
 map `/app/processed` to it. The deployment keeps this restricted runtime
 identity; it does not run ImageFWX as root or as the NAS owner account.
 
+### FnOS v1.2+ permission recovery
+
+FnOS v1.2.0 moved storage spaces to Windows ACL permissions. A Docker bind
+mount can report `rw=true` while ImageFWX's restricted runtime user still
+cannot create files. FnOS documents that Docker directories retain POSIX ACL
+behaviour; keep ImageFWX's three writable directories in a dedicated `data`
+folder below the Docker project, not inside the original-photo library. See
+[the full FnOS recovery steps](docs/wiki/Installation.md#fnos-v120-windows-acl-permission-recovery).
+
 For a domain or HTTPS, place a reverse proxy in front of the Web UI port and
 set `ALLOWED_ORIGINS` to the public HTTPS origin; no second ImageFWX Compose
 file is needed. ImageFWX proxies unmatched `/api/*` requests from its Next.js

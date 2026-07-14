@@ -80,10 +80,8 @@ Common issues and solutions for ImageMagick WebGUI.
 **Solutions:**
 
 1. Check MAX_UPLOAD_SIZE_MB in .env (hard maximum: 50MB)
-2. For larger files, increase limit:
-   ```env
-   MAX_UPLOAD_SIZE_MB=50
-   ```
+2. Compress, resize, or split a file before uploading. ImageFWX enforces a
+   50 MB hard limit and it cannot be raised through `.env`.
 
 ### Unsupported Format
 

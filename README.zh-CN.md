@@ -88,6 +88,10 @@ docker compose up -d --build
 
 容器以受限的 UID/GID `10001` 运行。对于 FnOS 的 Windows ACL 存储，请显式为该容器身份授予主机 `uploads`、`processed` 和 `temp` 目录的读、写和遍历权限，并让权限继承到目录内容。原始照片目录必须保持只读挂载，且绝不能把 `/app/processed` 映射到该目录。部署会继续使用此受限身份，不会将 ImageFWX 改为 root 或 NAS 所有者身份运行。
 
+### FnOS v1.2+ 权限恢复
+
+FnOS v1.2.0 起，存储空间改用 Windows ACL。Docker bind mount 显示 `rw=true`，并不代表 ImageFWX 的受限运行身份一定可以创建文件。FnOS 说明 Docker 目录仍保留 POSIX ACL 行为，因此应将 ImageFWX 的三个可写目录放入 Docker 项目下独立的 `data` 目录，而不是原始照片图库。完整步骤见[安装文档的 FnOS 权限恢复说明](docs/wiki/Installation.md#fnos-v120-windows-acl-permission-recovery)。
+
 如需域名或 HTTPS，请用反向代理转发 Web 界面端口，并将 `ALLOWED_ORIGINS` 设置为公开的 HTTPS 域名；不再需要第二份 ImageFWX Compose 配置。ImageFWX 会将 Next.js Web 界面中未被本地路由处理的 `/api/*` 请求转发到内部 FastAPI，因此反向代理只需将公开站点转发到 `3012` 端口。
 
 ### Lucky 反向代理

@@ -6,6 +6,8 @@
   records/upload copies/thumbnails, orphaned uploads, temporary work files,
   and processed exports. The worker never scans the read-only NAS source.
 - Capped individual browser uploads and NAS imports at 50 MB.
+- Documented FnOS v1.2.0+ Windows ACL recovery for ImageFWX bind mounts,
+  including safe Docker-data placement and runtime write verification.
 - Fixed NAS builds that lose the executable bit on `start.sh` by invoking the
   startup script through Bash from the application-owned `/app` directory.
 - Simplified deployment to one Compose file: NAS storage is configured through
