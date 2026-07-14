@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Query
 from fastapi.responses import FileResponse, StreamingResponse
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from pathlib import Path
@@ -494,14 +494,22 @@ async def delete_image(
     return {"message": "Image deleted successfully"}
 
 
+class DownloadZipRequest(BaseModel):
+    image_ids: List[int] = Field(min_length=1, max_length=100)
+
+
 @router.post("/download-zip")
 async def download_images_as_zip(
-    image_ids: List[int],
+    request: DownloadZipRequest,
     db: AsyncSession = Depends(get_db),
     current_user: Optional[User] = Depends(get_current_user_or_enforce)
 ):
     """Download multiple images as ZIP"""
-    query = select(Image).where(Image.id.in_(image_ids))
+    query = select(Image).where(Image.id.in_(request.image_ids))
+    if current_user:
+        query = query.where(Image.user_id == current_user.id)
+    else:
+        query = query.where(Image.user_id.is_(None))
     
     result = await db.execute(query)
     images = result.scalars().all()
