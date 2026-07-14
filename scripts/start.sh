@@ -3,15 +3,6 @@ set -e
 
 echo "🚀 Starting ImageMagick WebGUI..."
 
-# Start temp cleanup cron job (every 5 minutes)
-(
-  while true; do
-    sleep 300
-    find /tmp/imagemagick -type f -mmin +30 -delete 2>/dev/null || true
-    echo "🧹 Cleaned up old temp files"
-  done
-) &
-
 # Start RQ worker in background
 echo "📦 Starting RQ worker..."
 cd /app/backend
@@ -22,6 +13,22 @@ WORKER_PID=$!
 echo "🔧 Initializing database..."
 cd /app/backend
 python init_db.py
+
+# Start the retention-based cleanup worker after the database is available.
+# It only scans /app/uploads, /app/processed, and /tmp/imagemagick; the
+# read-only NAS source mount is never part of cleanup.
+CLEANUP_PID=""
+case "${CLEANUP_ENABLED:-true}" in
+  false|FALSE|False|0|no|NO|No|off|OFF|Off)
+    echo "🧹 Scheduled storage cleanup is disabled"
+    ;;
+  *)
+    echo "🧹 Starting scheduled storage cleanup..."
+    cd /app/backend
+    python -m app.workers.cleanup &
+    CLEANUP_PID=$!
+    ;;
+esac
 
 # Start FastAPI backend (single worker to avoid race conditions)
 echo "⚡ Starting FastAPI backend on port 8000..."
@@ -47,7 +54,7 @@ echo "   - Backend API: http://localhost:8000"
 echo "   - API Docs: http://localhost:8000/docs"
 
 # Handle shutdown
-trap "kill $WORKER_PID $BACKEND_PID $FRONTEND_PID 2>/dev/null; exit 0" SIGTERM SIGINT
+trap "kill $WORKER_PID $CLEANUP_PID $BACKEND_PID $FRONTEND_PID 2>/dev/null; exit 0" SIGTERM SIGINT
 
 # Wait for any process to exit
 wait -n

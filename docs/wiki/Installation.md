@@ -71,10 +71,30 @@ docker compose up -d --build
 
 Do not point `/app/processed` at the original-photo directory. Change the
 default `SECRET_KEY` and `JWT_SECRET` before exposing the application.
-The image runs as UID/GID `10001`; grant that identity write access to the
-three writable host directories before starting it (the source directory stays
-read-only). For a domain and HTTPS, use your existing reverse proxy and set
-`ALLOWED_ORIGINS` to the public HTTPS origin.
+The image runs as the restricted UID/GID `10001`. On FnOS Windows ACL storage,
+grant that identity read/write/traverse access to the three writable host
+directories and ensure the permission inherits to their contents (the source
+directory stays read-only). For a domain and HTTPS, use your existing reverse
+proxy and set `ALLOWED_ORIGINS` to the public HTTPS origin.
+
+### Storage retention
+
+ImageFWX runs a scheduled cleanup worker after initialization. It only scans
+`/app/uploads`, `/app/processed`, and `/tmp/imagemagick`; it never scans the
+read-only NAS source. Configure these values in `.env`:
+
+```env
+HISTORY_RETENTION_HOURS=24
+TEMP_RETENTION_HOURS=24
+PROCESSED_RETENTION_HOURS=168
+CLEANUP_ENABLED=true
+CLEANUP_INTERVAL_MINUTES=60
+```
+
+`HISTORY_RETENTION_HOURS` controls image records, their upload copies, and
+thumbnails. `PROCESSED_RETENTION_HOURS=0` disables automated deletion of final
+exports. Otherwise, expired results are permanently removed; set a retention
+period that matches your backup policy.
 
 ---
 

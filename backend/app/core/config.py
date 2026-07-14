@@ -81,10 +81,20 @@ class Settings(BaseSettings):
     google_client_id: Optional[str] = None
     google_client_secret: Optional[str] = None
     
-    # History retention
-    history_retention_hours: int = 24
+    # File retention and scheduled cleanup. Image records, their source files,
+    # and thumbnails follow history_retention_hours; temporary and exported
+    # files have independent retention periods.
+    history_retention_hours: int = Field(default=24, ge=1, le=8760)
+    cleanup_enabled: bool = True
+    cleanup_interval_minutes: int = Field(default=60, ge=5, le=1440)
+    temp_retention_hours: int = Field(default=24, ge=1, le=720)
+    # Set to 0 to retain processed exports indefinitely.
+    processed_retention_hours: int = Field(default=168, ge=0, le=8760)
     
-    @field_validator('require_login', 'allow_registration', 'gpu_enabled', 'force_cpu', 'nas_browser_enabled', mode='before')
+    @field_validator(
+        'require_login', 'allow_registration', 'gpu_enabled', 'force_cpu',
+        'nas_browser_enabled', 'cleanup_enabled', mode='before'
+    )
     @classmethod
     def parse_bool(cls, v):
         """Parse boolean from various string formats"""

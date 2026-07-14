@@ -86,7 +86,7 @@ NAS_SOURCE_STORAGE="/path/to/original-photos"
 docker compose up -d --build
 ```
 
-容器以 UID/GID `10001` 运行。请为主机的 `uploads`、`processed` 和 `temp` 目录授予该身份写权限；原始照片目录必须保持只读挂载，且绝不能把 `/app/processed` 映射到该目录。
+容器以受限的 UID/GID `10001` 运行。对于 FnOS 的 Windows ACL 存储，请显式为该容器身份授予主机 `uploads`、`processed` 和 `temp` 目录的读、写和遍历权限，并让权限继承到目录内容。原始照片目录必须保持只读挂载，且绝不能把 `/app/processed` 映射到该目录。部署会继续使用此受限身份，不会将 ImageFWX 改为 root 或 NAS 所有者身份运行。
 
 如需域名或 HTTPS，请用反向代理转发 Web 界面端口，并将 `ALLOWED_ORIGINS` 设置为公开的 HTTPS 域名；不再需要第二份 ImageFWX Compose 配置。ImageFWX 会将 Next.js Web 界面中未被本地路由处理的 `/api/*` 请求转发到内部 FastAPI，因此反向代理只需将公开站点转发到 `3012` 端口。
 
@@ -117,6 +117,27 @@ NAS 原始照片（只读）
 ```
 
 边框会在水印之前处理，所以文字和 Logo 可以定位在扩展的边框或 matte 区域。批量任务中，每张图片都会独立计算百分比边距和目标画布尺寸。
+
+## 存储保留与定时清理
+
+数据库准备就绪后，ImageFWX 会启动低频清理任务。它只扫描三个应用可写挂载目录，绝不会读取、删除或修改 `NAS_SOURCE_STORAGE`。
+
+```env
+# 图片库记录、原始上传副本与缩略图
+HISTORY_RETENTION_HOURS=24
+
+# ImageMagick 临时工作文件
+TEMP_RETENTION_HOURS=24
+
+# /app/processed 下的已完成文件；设为 0 则不清理此目录
+PROCESSED_RETENTION_HOURS=168
+
+# 每 60 分钟执行一次；可用范围是 5–1440 分钟
+CLEANUP_ENABLED=true
+CLEANUP_INTERVAL_MINUTES=60
+```
+
+任务会删除过期图片数据库记录及其上传副本和缩略图，也会删除未被引用的旧上传文件、临时工作文件和过期处理结果。请根据备份策略设置处理结果保留期：达到期限的导出文件会被永久删除。修改配置后执行 `docker compose up -d --build` 使其生效。
 
 ## 配置与安全
 

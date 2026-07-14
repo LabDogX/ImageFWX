@@ -109,9 +109,12 @@ spaces or non-ASCII characters.
 docker compose up -d --build
 ```
 
-The container runs as UID/GID `10001`. Grant that identity write access to the
-host `uploads`, `processed`, and `temp` directories. Keep the original-photo
-mount read-only and never map `/app/processed` to it.
+The container runs as the restricted UID/GID `10001`. On FnOS Windows ACL
+storage, explicitly grant that container identity read/write/traverse access to
+the host `uploads`, `processed`, and `temp` directories and let the permission
+inherit to their contents. Keep the original-photo mount read-only and never
+map `/app/processed` to it. The deployment keeps this restricted runtime
+identity; it does not run ImageFWX as root or as the NAS owner account.
 
 For a domain or HTTPS, place a reverse proxy in front of the Web UI port and
 set `ALLOWED_ORIGINS` to the public HTTPS origin; no second ImageFWX Compose
@@ -148,6 +151,33 @@ NAS originals (read-only)
 Borders are applied before watermarks, so text and logos can be positioned in
 the expanded border or matte area. Each image in a batch calculates percentage
 borders and target canvas dimensions independently.
+
+## Storage retention
+
+ImageFWX starts a low-frequency cleanup worker after the database is ready. It
+only scans the three writable application mounts and never reads, deletes, or
+modifies `NAS_SOURCE_STORAGE`.
+
+```env
+# Image-library records, original upload copies, and thumbnails
+HISTORY_RETENTION_HOURS=24
+
+# Temporary ImageMagick work files
+TEMP_RETENTION_HOURS=24
+
+# Completed files saved under /app/processed; set 0 to disable this cleanup
+PROCESSED_RETENTION_HOURS=168
+
+# Run every 60 minutes; accepted interval is 5–1440 minutes
+CLEANUP_ENABLED=true
+CLEANUP_INTERVAL_MINUTES=60
+```
+
+The worker removes expired image database rows along with their uploaded copy
+and thumbnail. It also removes unreferenced old upload files, temporary work
+files, and expired exported results. Choose the processed-results period to
+match your backup policy: exports are deleted permanently once their period is
+reached. Changes take effect after `docker compose up -d --build`.
 
 ## Configuration and security
 

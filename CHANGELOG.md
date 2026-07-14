@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Added configurable, retention-based storage cleanup for expired image
+  records/upload copies/thumbnails, orphaned uploads, temporary work files,
+  and processed exports. The worker never scans the read-only NAS source.
 - Fixed NAS builds that lose the executable bit on `start.sh` by invoking the
   startup script through Bash from the application-owned `/app` directory.
 - Simplified deployment to one Compose file: NAS storage is configured through

@@ -14,7 +14,6 @@ except ImportError:  # Fail closed below when libmagic is not installed.
 import shutil
 from pathlib import Path
 from typing import List, Optional, Tuple
-from datetime import datetime, timedelta
 from fastapi import UploadFile
 
 from app.core.config import settings
@@ -225,21 +224,6 @@ class FileService:
                     zf.write(file_path, archive_name)
         
         return str(zip_path)
-    
-    async def cleanup_expired(self, hours: int = 24) -> int:
-        """Clean up files older than specified hours"""
-        count = 0
-        cutoff = datetime.utcnow() - timedelta(hours=hours)
-        
-        for directory in [self.upload_dir, self.processed_dir, self.temp_dir]:
-            for file_path in directory.rglob("*"):
-                if file_path.is_file():
-                    mtime = datetime.fromtimestamp(file_path.stat().st_mtime)
-                    if mtime < cutoff:
-                        file_path.unlink()
-                        count += 1
-        
-        return count
     
     def get_output_path(
         self,
