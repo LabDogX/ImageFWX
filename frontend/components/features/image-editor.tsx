@@ -1036,8 +1036,8 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                   <TabsTrigger value="adjust" className="text-xs"><Sliders className="h-3.5 w-3.5 mr-1" />{t('Adjust')}</TabsTrigger>
                   <TabsTrigger value="resize" className="text-xs"><Maximize2 className="h-3.5 w-3.5 mr-1" />{t('Resize')}</TabsTrigger>
                   <TabsTrigger value="crop" className="text-xs"><Square className="h-3.5 w-3.5 mr-1" />{t('Crop')}</TabsTrigger>
-                  <TabsTrigger value="text" className="text-xs"><Type className="h-3.5 w-3.5 mr-1" />{t('Text')}</TabsTrigger>
                   <TabsTrigger value="frame" className="text-xs"><Square className="h-3.5 w-3.5 mr-1" />{t('Frame')}</TabsTrigger>
+                  <TabsTrigger value="text" className="text-xs"><Type className="h-3.5 w-3.5 mr-1" />{t('Text')}</TabsTrigger>
                   <TabsTrigger value="ai" className="text-xs"><Wand2 className="h-3.5 w-3.5 mr-1" />{t('AI')}</TabsTrigger>
                 </TabsList>
                 
@@ -1325,7 +1325,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                         min={8} max={128} step={2}
                       />
                       <div className="flex gap-1 mt-1">
-                        {[12, 24, 48, 96, 192].map((size) => (
+                        {[12, 24, 48, 96, 128].map((size) => (
                           <button
                             key={size}
                             onClick={() => setState(s => ({ ...s, watermarkFontSize: size }))}
