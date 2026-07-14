@@ -16,11 +16,15 @@ export function BorderPanel({ value, onChange }: { value: BorderSettings; onChan
   };
   const choosePreset = (preset: BorderPresetName) => {
     if (preset === 'Custom') return set({ preset });
-    onChange({ ...value, ...borderPresets[preset], enabled: true, preset, sidesLinked: false });
+    const presetSettings = borderPresets[preset];
+    // Preset IDs are application data, not translated display text.  Refuse an
+    // unknown value rather than silently keeping the previous border settings.
+    if (!presetSettings) return;
+    onChange({ ...value, ...presetSettings, enabled: true, preset, sidesLinked: false });
   };
   return <div className="space-y-4 overflow-y-auto pb-4">
     <div className="flex items-center justify-between"><Label>{t('Enable border')}</Label><input type="checkbox" checked={value.enabled} onChange={e => set({ enabled: e.target.checked })} /></div>
-    <label className="text-xs font-medium">{t('Preset')}<select className="mt-1 w-full rounded border bg-background p-2" value={value.preset} onChange={e => choosePreset(e.target.value as BorderPresetName)}>{([...Object.keys(borderPresets), 'Custom'] as BorderPresetName[]).map(name => <option key={name}>{t(name)}</option>)}</select></label>
+    <label className="text-xs font-medium">{t('Preset')}<select className="mt-1 w-full rounded border bg-background p-2" value={value.preset} onChange={e => choosePreset(e.target.value as BorderPresetName)}>{([...Object.keys(borderPresets), 'Custom'] as BorderPresetName[]).map(name => <option key={name} value={name}>{t(name)}</option>)}</select></label>
     <div className="grid grid-cols-2 gap-2"><label className="text-xs">{t('Mode')}<select className="mt-1 w-full rounded border bg-background p-2" value={value.mode} onChange={e => set({ mode: e.target.value as BorderSettings['mode'] })}><option value="custom">{t('Custom')}</option><option value="double">{t('Double')}</option><option value="matte">{t('Matte')}</option></select></label><label className="text-xs">{t('Unit')}<select className="mt-1 w-full rounded border bg-background p-2" value={value.unit} onChange={e => set({ unit: e.target.value as BorderSettings['unit'] })}><option value="percent">{t('% short edge')}</option><option value="px">px</option></select></label></div>
     <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={value.sidesLinked} onChange={e => set({ sidesLinked: e.target.checked })} /> {t('Link sides')}</label>
     <div className="grid grid-cols-2 gap-2">{(['top', 'right', 'bottom', 'left'] as const).map(side => <label key={side} className="text-xs capitalize">{t(side.charAt(0).toUpperCase() + side.slice(1))}<Input className="mt-1" type="number" min="0" value={value[side]} onChange={e => setSide(side, e.target.value)} /></label>)}</div>

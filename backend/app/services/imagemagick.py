@@ -568,7 +568,10 @@ class ImageMagickService:
             'HOME': '/tmp',
             'TMPDIR': '/tmp',
             'MAGICK_TEMPORARY_PATH': '/tmp',
-            'LC_ALL': 'C',
+            # Keep Unicode text (especially CJK watermarks) intact from the
+            # quoted command argument through ImageMagick's font renderer.
+            'LANG': 'C.UTF-8',
+            'LC_ALL': 'C.UTF-8',
         }
         
         def preexec():

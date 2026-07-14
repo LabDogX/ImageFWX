@@ -117,6 +117,22 @@ async def test_extended_watermark_fonts_use_server_fontconfig_patterns(tmp_path,
 
 
 @pytest.mark.asyncio
+async def test_default_watermark_uses_cjk_font_and_preserves_unicode_text(tmp_path, monkeypatch):
+    from PIL import Image
+
+    source = tmp_path / "source.png"
+    Image.new("RGB", (1000, 800), "white").save(source)
+    monkeypatch.setattr(ImageMagickService, "_get_magick_cmd", lambda self: __import__("asyncio").sleep(0, result="magick"))
+
+    command = await ImageMagickService().build_command(str(source), str(tmp_path / "out.png"), [{
+        "operation": "watermark", "params": {"text": "中文水印"},
+    }])
+
+    assert "-font 'Noto Sans CJK SC'" in command
+    assert "'中文水印'" in command
+
+
+@pytest.mark.asyncio
 async def test_border_after_resize_uses_resized_short_edge(tmp_path, monkeypatch):
     """Operation order must calculate percentages after prior resize work."""
     from PIL import Image
