@@ -50,6 +50,22 @@ WATERMARK_FONT_FAMILIES = {
 }
 
 
+def get_auto_oriented_dimensions(input_path: str) -> Tuple[int, int]:
+    """Return the dimensions ImageMagick sees after ``-auto-orient``.
+
+    Camera images commonly store the sensor pixels in landscape orientation and
+    carry an EXIF orientation tag.  Commands are built with ``-auto-orient``
+    first, so border calculations must use the same orientation or a portrait
+    photo can be cropped by a landscape-sized ``-extent`` canvas.
+    """
+    from PIL import Image as PILImage
+
+    with PILImage.open(input_path) as image:
+        width, height = image.width, image.height
+        orientation = image.getexif().get(274)
+    return (height, width) if orientation in {5, 6, 7, 8} else (width, height)
+
+
 def validate_hex_color(value: str) -> bool:
     """Return True only for the supported, shell-safe hexadecimal colors."""
     return isinstance(value, str) and bool(HEX_COLOR_RE.fullmatch(value))
@@ -294,10 +310,7 @@ class ImageMagickService:
         # Get image dimensions for scaling
         img_width = img_height = None
         try:
-            from PIL import Image as PILImage
-            with PILImage.open(input_path) as pil_img:
-                img_width = pil_img.width
-                img_height = pil_img.height
+            img_width, img_height = get_auto_oriented_dimensions(input_path)
         except:
             pass
 
@@ -435,7 +448,7 @@ class ImageMagickService:
                     shadow_color = params.get("shadow_color", "#000000")
                     opacity = float(params.get("opacity", 0.5))
                     font_name = WATERMARK_FONT_FAMILIES.get(
-                        params.get("font", "sans"), WATERMARK_FONT_FAMILIES["sans"]
+                        params.get("font", "noto-sans-sc"), WATERMARK_FONT_FAMILIES["noto-sans-sc"]
                     )
                     
                     gravity_map = {

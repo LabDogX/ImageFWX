@@ -108,7 +108,9 @@ const defaultState: EditorState = {
   watermarkOpacity: 70,
   watermarkColor: '#FFFFFF',
   watermarkShadowColor: '#000000',
-  watermarkFont: 'sans',
+  // Noto CJK is installed in the production image and renders both Chinese
+  // and Latin watermark text consistently with the browser preview.
+  watermarkFont: 'noto-sans-sc',
   watermarkImageId: null,
   watermarkImageScale: 20,
   watermarkOffsetX: 0,
@@ -239,6 +241,19 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
   // The serialized settings avoid a new effect from unrelated editor state.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentImageId, JSON.stringify(state.border)]);
+
+  // A border preview is a temporary backend-rendered image.  Once the border
+  // is turned off, restore the actual library image instead of leaving the
+  // last preview (which made preset changes look as if they had no effect).
+  useEffect(() => {
+    if (state.border.enabled) return;
+    previewRequestRef.current += 1;
+    setIsBorderPreviewing(false);
+    const source = isPdf
+      ? `${getApiUrl()}/api/images/${currentImageId}/preview`
+      : `${getApiUrl()}/api/images/${currentImageId}`;
+    setImageSrc(`${source}?t=${Date.now()}`);
+  }, [currentImageId, isPdf, state.border.enabled]);
   
   // Separate AI processing states
   const [isUpscaling, setIsUpscaling] = useState(false);

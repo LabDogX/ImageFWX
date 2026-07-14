@@ -92,7 +92,7 @@ class WatermarkParams(BaseModel):
     color: str = "#FFFFFF"
     shadow_color: str = "#000000"
     # These identifiers are an allow-list, never font paths supplied by clients.
-    font: str = Field("sans", min_length=1, max_length=64)
+    font: str = Field("noto-sans-sc", min_length=1, max_length=64)
 
     @field_validator("color", "shadow_color")
     @classmethod

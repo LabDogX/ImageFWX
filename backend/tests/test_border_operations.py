@@ -3,7 +3,7 @@ from pydantic import ValidationError
 
 from app.api.operations import BorderParams, Operation
 from app.services.imagemagick import (
-    build_border_arguments, calculate_border_pixels, calculate_target_canvas,
+    ImageMagickService, build_border_arguments, calculate_border_pixels, calculate_target_canvas,
     validate_hex_color,
 )
 
@@ -74,6 +74,8 @@ def test_operation_validates_border_before_command_building():
 
 
 def test_text_and_image_watermark_params_are_strictly_validated():
+    default_text = Operation(operation="watermark", params={"text": "中文 watermark"})
+    assert default_text.params["font"] == "noto-sans-sc"
     text = Operation(operation="watermark", params={"text": "© Photo", "color": "#123", "shadow_color": "#000000", "font": "serif"})
     assert text.params["font"] == "serif"
     source_han = Operation(operation="watermark", params={"text": "照片", "font": "source-han-sans"})
@@ -128,6 +130,25 @@ async def test_border_after_resize_uses_resized_short_edge(tmp_path, monkeypatch
     ])
     # 1000×800 fit into 500×500 becomes 500×400; 10% borders are 40px.
     assert "-extent 580x480+40+40" in command
+
+
+@pytest.mark.asyncio
+async def test_border_uses_dimensions_after_exif_auto_orient(tmp_path, monkeypatch):
+    """Portrait camera images must not be framed using raw sensor dimensions."""
+    from PIL import Image
+
+    source = tmp_path / "portrait-camera.jpg"
+    exif = Image.Exif()
+    exif[274] = 6  # rotate 90° clockwise when auto-oriented
+    Image.new("RGB", (1000, 800), "white").save(source, exif=exif)
+    monkeypatch.setattr(ImageMagickService, "_get_magick_cmd", lambda self: __import__("asyncio").sleep(0, result="magick"))
+
+    command = await ImageMagickService().build_command(str(source), str(tmp_path / "out.jpg"), [{
+        "operation": "border", "params": border(top=10, right=20, bottom=30, left=40),
+    }])
+
+    # ``-auto-orient`` changes 1000×800 into 800×1000 before the border runs.
+    assert "-extent 860x1040+40+10" in command
 
 
 @pytest.mark.asyncio
