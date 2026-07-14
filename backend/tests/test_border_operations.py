@@ -100,7 +100,7 @@ async def test_source_han_watermark_uses_server_font_allowlist(tmp_path, monkeyp
     command = await ImageMagickService().build_command(str(source), str(tmp_path / "out.png"), [{
         "operation": "watermark", "params": {"text": "照片", "font": "source-han-serif"},
     }])
-    assert "-font 'Noto Serif CJK SC'" in command
+    assert "-font /usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc" in command
 
 
 @pytest.mark.asyncio
@@ -113,7 +113,7 @@ async def test_extended_watermark_fonts_use_server_fontconfig_patterns(tmp_path,
     command = await ImageMagickService().build_command(str(source), str(tmp_path / "out.png"), [{
         "operation": "watermark", "params": {"text": "照片", "font": "noto-sans-sc-bold"},
     }])
-    assert "-font 'Noto Sans CJK SC:style=Bold'" in command
+    assert "-font /usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc" in command
 
 
 @pytest.mark.asyncio
@@ -128,7 +128,7 @@ async def test_default_watermark_uses_cjk_font_and_preserves_unicode_text(tmp_pa
         "operation": "watermark", "params": {"text": "中文水印"},
     }])
 
-    assert "-font 'Noto Sans CJK SC'" in command
+    assert "-font /usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc" in command
     assert "'中文水印'" in command
 
 
@@ -145,7 +145,10 @@ async def test_border_after_resize_uses_resized_short_edge(tmp_path, monkeypatch
         {"operation": "border", "params": border(unit="percent", top=10, right=10, bottom=10, left=10)},
     ])
     # 1000×800 fit into 500×500 becomes 500×400; 10% borders are 40px.
-    assert "-extent 580x480+40+40" in command
+    assert "-gravity North -splice 0x40" in command
+    assert "-gravity East -splice 40x0" in command
+    assert "-gravity South -splice 0x40" in command
+    assert "-gravity West -splice 40x0" in command
 
 
 @pytest.mark.asyncio
@@ -164,7 +167,10 @@ async def test_border_uses_dimensions_after_exif_auto_orient(tmp_path, monkeypat
     }])
 
     # ``-auto-orient`` changes 1000×800 into 800×1000 before the border runs.
-    assert "-extent 860x1040+40+10" in command
+    assert "-gravity North -splice 0x10" in command
+    assert "-gravity East -splice 20x0" in command
+    assert "-gravity South -splice 0x30" in command
+    assert "-gravity West -splice 40x0" in command
 
 
 @pytest.mark.asyncio

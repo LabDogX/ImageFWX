@@ -22,31 +22,32 @@ TARGET_RATIOS = {
 }
 
 # Server-owned font identifiers for text watermarks. Do not accept font names
-# or paths from API clients: ImageMagick resolves fontconfig patterns itself.
-# These families are installed by fonts-dejavu-core and fonts-noto-cjk in every
-# production image. Noto CJK is the Google distribution of Adobe Source Han.
+# or paths from API clients.  Debian's ImageMagick 6 can resolve these families
+# with ``fc-match`` but may still fail to load them via ``-font <family>``.
+# Fixed in-image font files avoid that incompatibility while keeping the public
+# API as a safe allow-list of identifiers.
 WATERMARK_FONT_FAMILIES = {
-    "sans": "DejaVu-Sans",
-    "sans-bold": "DejaVu-Sans-Bold",
-    "sans-condensed": "DejaVu-Sans-Condensed",
-    "serif": "DejaVu-Serif",
-    "serif-bold": "DejaVu-Serif-Bold",
-    "serif-italic": "DejaVu-Serif-Italic",
-    "mono": "DejaVu-Sans-Mono",
-    "mono-bold": "DejaVu-Sans-Mono-Bold",
+    "sans": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    "sans-bold": "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    "sans-condensed": "/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed.ttf",
+    "serif": "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf",
+    "serif-bold": "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf",
+    "serif-italic": "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Italic.ttf",
+    "mono": "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+    "mono-bold": "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf",
     # Keep these legacy IDs so existing saved jobs remain compatible.
-    "source-han-sans": "Noto Sans CJK SC",
-    "source-han-serif": "Noto Serif CJK SC",
-    "noto-sans-sc": "Noto Sans CJK SC",
-    "noto-sans-sc-bold": "Noto Sans CJK SC:style=Bold",
-    "noto-serif-sc": "Noto Serif CJK SC",
-    "noto-serif-sc-bold": "Noto Serif CJK SC:style=Bold",
-    "noto-sans-tc": "Noto Sans CJK TC",
-    "noto-serif-tc": "Noto Serif CJK TC",
-    "noto-sans-jp": "Noto Sans CJK JP",
-    "noto-serif-jp": "Noto Serif CJK JP",
-    "noto-sans-kr": "Noto Sans CJK KR",
-    "noto-serif-kr": "Noto Serif CJK KR",
+    "source-han-sans": "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    "source-han-serif": "/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc",
+    "noto-sans-sc": "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    "noto-sans-sc-bold": "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
+    "noto-serif-sc": "/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc",
+    "noto-serif-sc-bold": "/usr/share/fonts/opentype/noto/NotoSerifCJK-Bold.ttc",
+    "noto-sans-tc": "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    "noto-serif-tc": "/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc",
+    "noto-sans-jp": "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    "noto-serif-jp": "/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc",
+    "noto-sans-kr": "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    "noto-serif-kr": "/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc",
 }
 
 
@@ -113,8 +114,10 @@ def calculate_target_canvas(width: int, height: int, target_ratio: str) -> Tuple
 def build_border_arguments(width: int, height: int, params: Dict) -> Tuple[List[str], Tuple[int, int]]:
     """Build ImageMagick arguments for a validated border operation.
 
-    `-extent` is used with NorthWest gravity and explicit offsets so asymmetric
-    sides are deterministic.  All values arrive from validated Pydantic data.
+    Asymmetric outer margins use one ``-splice`` operation per edge.  Unlike
+    ``-extent`` offsets, splice directions are unambiguous and never crop the
+    source image when EXIF orientation or a prior resize changes its canvas.
+    All values arrive from validated Pydantic data.
     """
     outer = calculate_border_pixels(width, height, params)
     args: List[str] = []
@@ -127,8 +130,17 @@ def build_border_arguments(width: int, height: int, params: Dict) -> Tuple[List[
 
     framed_w = current_w + outer["left"] + outer["right"]
     framed_h = current_h + outer["top"] + outer["bottom"]
-    args += ["-gravity NorthWest", f"-background {shlex.quote(params['color'])}",
-             f"-extent {framed_w}x{framed_h}+{outer['left']}+{outer['top']}", "+repage"]
+    args += [f"-background {shlex.quote(params['color'])}"]
+    edge_splices = (
+        ("North", f"0x{outer['top']}"),
+        ("East", f"{outer['right']}x0"),
+        ("South", f"0x{outer['bottom']}"),
+        ("West", f"{outer['left']}x0"),
+    )
+    for gravity, geometry in edge_splices:
+        if geometry != "0x0":
+            args += [f"-gravity {gravity}", f"-splice {geometry}"]
+    args.append("+repage")
     current_w, current_h = framed_w, framed_h
 
     if params["mode"] == "matte" and params["target_ratio"] != "original":
