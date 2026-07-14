@@ -76,6 +76,7 @@ def test_operation_validates_border_before_command_building():
 def test_text_and_image_watermark_params_are_strictly_validated():
     default_text = Operation(operation="watermark", params={"text": "中文 watermark"})
     assert default_text.params["font"] == "noto-sans-sc"
+    assert Operation(operation="watermark", params={"text": "large", "font_size": 512}).params["font_size"] == 512
     text = Operation(operation="watermark", params={"text": "© Photo", "color": "#123", "shadow_color": "#000000", "font": "serif"})
     assert text.params["font"] == "serif"
     source_han = Operation(operation="watermark", params={"text": "照片", "font": "source-han-sans"})
@@ -88,6 +89,8 @@ def test_text_and_image_watermark_params_are_strictly_validated():
         Operation(operation="image-watermark", params={"image_id": 12, "scale": 101})
     with pytest.raises(ValidationError):
         Operation(operation="watermark", params={"text": "x", "font": "untrusted.ttf"})
+    with pytest.raises(ValidationError):
+        Operation(operation="watermark", params={"text": "too large", "font_size": 513})
 
 
 @pytest.mark.asyncio

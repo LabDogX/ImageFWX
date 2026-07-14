@@ -209,6 +209,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
   // Image dimensions
   const [naturalSize, setNaturalSize] = useState({ w: 0, h: 0 });
   const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
+  const [previewLayoutSize, setPreviewLayoutSize] = useState({ w: 0, h: 0 });
   
   // UI state
   const [zoom, setZoom] = useState(1);
@@ -332,8 +333,11 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
     if (imageRef.current) {
       const w = imageRef.current.naturalWidth;
       const h = imageRef.current.naturalHeight;
+      const displayedWidth = imageRef.current.clientWidth;
+      const displayedHeight = imageRef.current.clientHeight;
       setNaturalSize({ w, h });
       setImageDimensions({ width: w, height: h });
+      setPreviewLayoutSize({ w: displayedWidth, h: displayedHeight });
       // Set initial resize dimensions based on actual image
       if (w > 0 && h > 0) {
         setState(s => ({ 
@@ -374,6 +378,20 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
     if (state.flipV) transforms.push('scaleY(-1)');
     return transforms.join(' ');
   }, [state, zoom]);
+
+  // Match the ImageMagick watermark calculation exactly: the backend scales a
+  // point size with the processed image width, while this preview additionally
+  // converts that value to the currently displayed image scale.
+  const previewWatermarkFontSize = (() => {
+    const sourceWidth = naturalSize.w;
+    const generatedPointSize = sourceWidth > 0
+      ? Math.max(state.watermarkFontSize, Math.floor(state.watermarkFontSize * (sourceWidth / 800)))
+      : state.watermarkFontSize;
+    const displayScale = sourceWidth > 0 && previewLayoutSize.w > 0
+      ? previewLayoutSize.w / sourceWidth
+      : 1;
+    return Math.max(1, generatedPointSize * displayScale * zoom);
+  })();
   
   // Crop mouse handlers - relative to image
   const handleCropMouseDown = (e: React.MouseEvent) => {
@@ -971,7 +989,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                       state.watermarkPosition === "southeast" && "bottom-4 right-4",
                     )}
                     style={{ 
-                      fontSize: `${Math.max(10, state.watermarkFontSize * zoom)}px`,
+                      fontSize: `${previewWatermarkFontSize}px`,
                       fontFamily: watermarkPreviewFonts[state.watermarkFont],
                       fontWeight: 'normal',
                       color: state.watermarkColor,
@@ -1304,10 +1322,10 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                       <Slider 
                         value={[state.watermarkFontSize]} 
                         onValueChange={([v]) => setState(s => ({ ...s, watermarkFontSize: v }))} 
-                        min={8} max={72} step={2}
+                        min={8} max={128} step={2}
                       />
                       <div className="flex gap-1 mt-1">
-                        {[12, 18, 24, 36, 48].map((size) => (
+                        {[12, 24, 48, 96, 192].map((size) => (
                           <button
                             key={size}
                             onClick={() => setState(s => ({ ...s, watermarkFontSize: size }))}
