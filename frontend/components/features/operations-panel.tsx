@@ -169,7 +169,7 @@ export function OperationsPanel() {
           setCommandPreview(error.response?.data?.detail || t('Error building command'));
         }
       } else {
-        setCommandPreview('Select operations to see command preview');
+        setCommandPreview(t('Select operations to see command preview'));
       }
     };
 
@@ -255,7 +255,7 @@ export function OperationsPanel() {
 
         // For terminal mode, use async queue
         const result = await operationsApi.processRaw(validIds, rawCommand, outputFormat);
-        toast.success(t('Job queued'), { description: `Job ID: ${result.job_id}` });
+        toast.success(t('Job queued'), { description: t('Job ID: {id}', { id: result.job_id }) });
         setTimeout(refreshImages, 2000);
         setIsProcessing(false);
         return;

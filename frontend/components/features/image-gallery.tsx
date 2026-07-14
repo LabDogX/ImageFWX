@@ -299,9 +299,9 @@ export function ImageGallery() {
       await imagesApi.delete(image.id);
       removeImage(image.id);
       await refreshProjects();
-      toast.success('Image deleted');
+      toast.success(t('Image deleted'));
     } catch (error) {
-      toast.error('Failed to delete image');
+      toast.error(t('Failed to delete image'));
     }
   };
 
@@ -337,9 +337,9 @@ export function ImageGallery() {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
       }
-      toast.success('Download started');
+      toast.success(t('Download started'));
     } catch (error) {
-      toast.error('Failed to download images');
+      toast.error(t('Failed to download images'));
     }
   };
 

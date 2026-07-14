@@ -293,14 +293,14 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
       
       const data = await response.json();
       setDisplayFilename(data.original_filename);
-      toast.success('Filename updated');
+      toast.success(t('Filename updated'));
     } catch (error) {
-      toast.error('Failed to rename file');
+      toast.error(t('Failed to rename file'));
       setEditingFilename(displayFilename);
     } finally {
       setIsEditingFilename(false);
     }
-  }, [editingFilename, displayFilename, currentImageId]);
+  }, [editingFilename, displayFilename, currentImageId, t]);
   
   const handleFilenameKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -433,7 +433,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
     if (!cropArea || !imageRef.current) return;
     
     setIsProcessing(true);
-    setProcessingMessage("Applying crop...");
+    setProcessingMessage(t('Applying crop...'));
     
     const rect = imageRef.current.getBoundingClientRect();
     const scaleX = naturalSize.w / rect.width;
@@ -463,13 +463,13 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
         setImageSrc(`${getApiUrl()}${data.image_url}?t=${Date.now()}`);
         setCropArea(null);
         setCropMode(false);
-        toast.success("Crop applied!");
+        toast.success(t('Crop applied!'));
       } else {
         const err = await res.json();
-        toast.error("Crop failed", { description: err.detail });
+        toast.error(t('Crop failed'), { description: err.detail });
       }
     } catch {
-      toast.error("Crop failed");
+      toast.error(t('Crop failed'));
     } finally {
       setIsProcessing(false);
       setProcessingMessage("");
@@ -484,12 +484,12 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
     if (ops.length === 0) {
       setSavedState({ ...state });
       setHasUnsavedChanges(false);
-      toast.success("Changes saved");
+      toast.success(t('Changes saved'));
       return;
     }
     
     setIsProcessing(true);
-    setProcessingMessage("Saving changes...");
+    setProcessingMessage(t('Saving changes...'));
     
     try {
       const res = await fetch(`${getApiUrl()}/api/operations/process-sync`, {
@@ -510,13 +510,13 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
         setState({ ...defaultState });
         setSavedState({ ...defaultState });
         setHasUnsavedChanges(false);
-        toast.success("Changes saved!");
+        toast.success(t('Changes saved!'));
       } else {
         const err = await res.json();
-        toast.error("Save failed", { description: err.detail });
+        toast.error(t('Save failed'), { description: err.detail });
       }
     } catch {
-      toast.error("Save failed");
+      toast.error(t('Save failed'));
     } finally {
       setIsProcessing(false);
       setProcessingMessage("");
@@ -563,7 +563,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
     setSavedState({ ...defaultState });
     setCropMode(false);
     setCropArea(null);
-    toast.info("Reset to defaults");
+    toast.info(t('Reset to defaults'));
   };
   
   // Quick filters
@@ -637,7 +637,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
     ops.push({ operation: "quality", params: { value: quality } });
     
     setIsProcessing(true);
-    setProcessingMessage("Processing and downloading...");
+    setProcessingMessage(t('Processing and downloading...'));
     
     try {
       const res = await fetch(`${getApiUrl()}/api/operations/download-direct`, {
@@ -670,14 +670,14 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
         
-        toast.success("Downloaded!");
+        toast.success(t('Downloaded!'));
       } else {
         const err = await res.json();
-        toast.error("Download failed", { description: err.detail });
+        toast.error(t('Download failed'), { description: err.detail });
       }
     } catch (e) {
       console.error(e);
-      toast.error("Download failed");
+      toast.error(t('Download failed'));
     } finally {
       setIsProcessing(false);
       setProcessingMessage("");
@@ -687,7 +687,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
   // AI Remove Background - synchronous with blur overlay
   const handleRemoveBackground = async () => {
     setIsRemovingBg(true);
-    setProcessingMessage("Removing background with AI... This may take 30-60 seconds");
+    setProcessingMessage(t('Removing background with AI... This may take 30-60 seconds'));
     
     try {
       // Create AbortController for timeout
@@ -709,20 +709,20 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
         if (data.success && data.image_url) {
           setCurrentImageId(data.image_id);
           setImageSrc(`${getApiUrl()}${data.image_url}?t=${Date.now()}`);
-          toast.success("Background removed!");
+          toast.success(t('Background removed!'));
         } else {
-          toast.error("No result returned");
+          toast.error(t('No result returned'));
         }
       } else {
-        const err = await res.json().catch(() => ({ detail: "Unknown error" }));
-        toast.error("Failed", { description: err.detail || "AI service unavailable" });
+        const err = await res.json().catch(() => ({ detail: t('Unknown error') }));
+        toast.error(t('Failed'), { description: err.detail || t('AI service unavailable') });
       }
     } catch (e: any) {
       console.error("Remove background error:", e);
       if (e.name === 'AbortError') {
-        toast.error("Operation timed out", { description: "Try with a smaller image" });
+        toast.error(t('Operation timed out'), { description: t('Try with a smaller image') });
       } else {
-        toast.error("Failed to remove background", { description: e.message });
+        toast.error(t('Failed to remove background'), { description: e.message });
       }
     } finally {
       setIsRemovingBg(false);
@@ -733,7 +733,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
   // Auto enhance
   const handleAutoEnhance = async () => {
     setIsEnhancing(true);
-    setProcessingMessage("Enhancing...");
+    setProcessingMessage(t('Enhancing...'));
     
     try {
       const res = await fetch(`${getApiUrl()}/api/operations/process-sync`, {
@@ -754,13 +754,13 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
         const data = await res.json();
         setCurrentImageId(data.image_id);
         setImageSrc(`${getApiUrl()}${data.image_url}?t=${Date.now()}`);
-        toast.success("Image enhanced!");
+        toast.success(t('Image enhanced!'));
       } else {
-        toast.error("Enhancement failed");
+        toast.error(t('Enhancement failed'));
       }
     } catch (e) {
       console.error("Enhance error:", e);
-      toast.error("Failed");
+      toast.error(t('Failed'));
     } finally {
       setIsEnhancing(false);
       setProcessingMessage("");
@@ -770,7 +770,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
   // AI Upscale
   const handleUpscale = async (scale: number) => {
     setIsUpscaling(true);
-    setProcessingMessage(`Upscaling ${scale}x... This may take a moment`);
+    setProcessingMessage(t('Upscaling {scale}x... This may take a moment', { scale }));
     
     try {
       const res = await fetch(`${getApiUrl()}/api/operations/upscale`, {
@@ -788,17 +788,17 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
         if (data.success && data.image_url) {
           setCurrentImageId(data.image_id);
           setImageSrc(`${getApiUrl()}${data.image_url}?t=${Date.now()}`);
-          toast.success(`Upscaled to ${data.new_size.width}x${data.new_size.height}!`);
+          toast.success(t('Upscaled to {width}x{height}!', { width: data.new_size.width, height: data.new_size.height }));
         } else {
-          toast.error("Upscale failed", { description: data.detail || "Unknown error" });
+          toast.error(t('Upscale failed'), { description: data.detail || t('Unknown error') });
         }
       } else {
         const err = await res.json();
-        toast.error("Upscale failed", { description: err.detail || "Server error" });
+        toast.error(t('Upscale failed'), { description: err.detail || t('Server error') });
       }
     } catch (e) {
       console.error("Upscale error:", e);
-      toast.error("Failed to upscale image");
+      toast.error(t('Failed to upscale image'));
     } finally {
       setIsUpscaling(false);
       setProcessingMessage("");
@@ -812,7 +812,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
   ];
 
   const handleClose = () => {
-    if (hasUnsavedChanges && !confirm("Unsaved changes will be lost. Close anyway?")) return;
+    if (hasUnsavedChanges && !confirm(t('Unsaved changes will be lost. Close anyway?'))) return;
     onClose();
   };
 
@@ -873,7 +873,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
             </div>
           </div>
           
-          <div className="flex flex-1 overflow-hidden">
+          <div className="flex flex-1 min-h-0 overflow-hidden">
             {/* Preview area */}
             <div 
               ref={imageContainerRef}
@@ -978,7 +978,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
             </div>
             
             {/* Controls panel */}
-            <div className="w-80 border-l bg-background flex flex-col">
+            <div className="w-80 min-h-0 border-l bg-background flex flex-col">
               {/* Quick actions */}
               <div className="flex items-center justify-around p-3 border-b">
                 <Button variant="ghost" size="icon" onClick={rotateLeft} title={t('Rotate left')}><RotateCcw className="h-4 w-4" /></Button>
@@ -998,7 +998,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                 </Button>
               </div>
               
-              <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col">
+              <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 min-h-0 flex flex-col">
                 <TabsList className="grid grid-cols-3 mx-3 mt-3 h-auto">
                   <TabsTrigger value="adjust" className="text-xs"><Sliders className="h-3.5 w-3.5 mr-1" />{t('Adjust')}</TabsTrigger>
                   <TabsTrigger value="resize" className="text-xs"><Maximize2 className="h-3.5 w-3.5 mr-1" />{t('Resize')}</TabsTrigger>
@@ -1008,7 +1008,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                   <TabsTrigger value="ai" className="text-xs"><Wand2 className="h-3.5 w-3.5 mr-1" />{t('AI')}</TabsTrigger>
                 </TabsList>
                 
-                <div className="flex-1 overflow-y-auto p-4">
+                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4">
                   {/* Adjust tab */}
                   <TabsContent value="adjust" className="mt-0 space-y-4">
                     {[
@@ -1034,7 +1034,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                     ))}
                     
                     <div className="pt-4 border-t">
-                      <Label className="text-xs mb-3 block">Quick Filters</Label>
+                      <Label className="text-xs mb-3 block">{t('Quick Filters')}</Label>
                       <div className="grid grid-cols-3 gap-2">
                         {[
                           { name: "Grayscale", fn: applyGrayscale },
@@ -1042,9 +1042,9 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                           { name: "Vintage", fn: applyVintage },
                           { name: "Hi-Contrast", fn: applyHighContrast },
                           { name: "Bright", fn: applyBright },
-                          { name: "Dark", fn: applyDark },
+                          { name: "Dark Filter", fn: applyDark },
                         ].map(({ name, fn }) => (
-                          <Button key={name} variant="outline" size="sm" className="text-xs" onClick={fn}>{name}</Button>
+                          <Button key={name} variant="outline" size="sm" className="text-xs" onClick={fn}>{t(name)}</Button>
                         ))}
                       </div>
                     </div>
@@ -1058,8 +1058,8 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                       <div className="flex items-center gap-2">
                         <Maximize2 className="h-5 w-5 text-primary" />
                         <div>
-                          <h4 className="font-medium text-sm">Resize Image</h4>
-                          <p className="text-xs text-muted-foreground">Change dimensions or scale</p>
+                          <h4 className="font-medium text-sm">{t('Resize Image')}</h4>
+                          <p className="text-xs text-muted-foreground">{t('Change dimensions or scale')}</p>
                         </div>
                       </div>
                       
@@ -1071,7 +1071,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                           className="flex-1"
                           onClick={() => setState(s => ({ ...s, resizeMode: 'dimensions' }))}
                         >
-                          Dimensions
+                          {t('Dimensions')}
                         </Button>
                         <Button 
                           variant={state.resizeMode === 'percent' ? 'default' : 'outline'} 
@@ -1079,7 +1079,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                           className="flex-1"
                           onClick={() => setState(s => ({ ...s, resizeMode: 'percent' }))}
                         >
-                          Percentage
+                          {t('Percentage')}
                         </Button>
                       </div>
                       
@@ -1087,7 +1087,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                         <>
                           <div className="grid grid-cols-2 gap-3">
                             <div>
-                              <Label className="text-xs">Width (px)</Label>
+                              <Label className="text-xs">{t('Width (px)')}</Label>
                               <Input 
                                 type="number" 
                                 value={state.resizeWidth}
@@ -1104,7 +1104,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                               />
                             </div>
                             <div>
-                              <Label className="text-xs">Height (px)</Label>
+                              <Label className="text-xs">{t('Height (px)')}</Label>
                               <Input 
                                 type="number" 
                                 value={state.resizeHeight}
@@ -1129,12 +1129,12 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                             onClick={() => setState(s => ({ ...s, keepAspectRatio: !s.keepAspectRatio }))}
                           >
                             {state.keepAspectRatio ? <Link2 className="h-4 w-4 mr-2" /> : <Link2Off className="h-4 w-4 mr-2" />}
-                            {state.keepAspectRatio ? 'Aspect Ratio Locked' : 'Aspect Ratio Unlocked'}
+                            {state.keepAspectRatio ? t('Aspect Ratio Locked') : t('Aspect Ratio Unlocked')}
                           </Button>
                           
                           {/* Quick sizes */}
                           <div>
-                            <Label className="text-xs text-muted-foreground">Quick Sizes</Label>
+                            <Label className="text-xs text-muted-foreground">{t('Quick Sizes')}</Label>
                             <div className="grid grid-cols-3 gap-2 mt-2">
                               {[
                                 { w: 1920, h: 1080, label: 'Full HD' },
@@ -1151,7 +1151,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                                   className="text-xs"
                                   onClick={() => setState(s => ({ ...s, resizeWidth: w, resizeHeight: h }))}
                                 >
-                                  {label}
+                                  {t(label)}
                                 </Button>
                               ))}
                             </div>
@@ -1162,7 +1162,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                       {state.resizeMode === 'percent' && (
                         <div className="space-y-3">
                           <div className="flex justify-between">
-                            <Label className="text-xs">Scale</Label>
+                            <Label className="text-xs">{t('Scale')}</Label>
                             <span className="text-xs text-muted-foreground">{state.resizePercent}%</span>
                           </div>
                           <Slider 
@@ -1189,12 +1189,12 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                     
                     {imageDimensions && (
                       <div className="text-xs text-muted-foreground text-center">
-                        Original: {imageDimensions.width} × {imageDimensions.height} px
+                        {t('Original: {width} × {height} px', { width: imageDimensions.width, height: imageDimensions.height })}
                         {state.resizeMode === 'dimensions' && (
-                          <> → New: {state.resizeWidth} × {state.resizeHeight} px</>
+                          <> → {t('New: {width} × {height} px', { width: state.resizeWidth, height: state.resizeHeight })}</>
                         )}
                         {state.resizeMode === 'percent' && (
-                          <> → New: {Math.round(imageDimensions.width * state.resizePercent / 100)} × {Math.round(imageDimensions.height * state.resizePercent / 100)} px</>
+                          <> → {t('New: {width} × {height} px', { width: Math.round(imageDimensions.width * state.resizePercent / 100), height: Math.round(imageDimensions.height * state.resizePercent / 100) })}</>
                         )}
                       </div>
                     )}
@@ -1204,7 +1204,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                   
                   <TabsContent value="frame" className="mt-0 p-4">
                     <BorderPanel value={state.border} onChange={(border) => { setState(s => ({ ...s, border })); setHasUnsavedChanges(true); }} />
-                    {isBorderPreviewing && <p className="mt-2 text-xs text-muted-foreground">Updating ImageMagick preview…</p>}
+                    {isBorderPreviewing && <p className="mt-2 text-xs text-muted-foreground">{t('Updating ImageMagick preview…')}</p>}
                     <SaveButton />
                   </TabsContent>
 
@@ -1214,8 +1214,8 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                       <div className="flex items-center gap-2">
                         <CropIcon className="h-5 w-5 text-primary" />
                         <div>
-                          <h4 className="font-medium text-sm">Crop Image</h4>
-                          <p className="text-xs text-muted-foreground">Draw on image to select area</p>
+                          <h4 className="font-medium text-sm">{t('Crop Image')}</h4>
+                          <p className="text-xs text-muted-foreground">{t('Draw on image to select area')}</p>
                         </div>
                       </div>
                       
@@ -1224,21 +1224,21 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                         variant={cropMode ? "default" : "outline"}
                         onClick={() => { setCropMode(!cropMode); if (cropMode) setCropArea(null); }}
                       >
-                        {cropMode ? "Exit Crop Mode" : "Start Cropping"}
+                        {cropMode ? t('Exit Crop Mode') : t('Start Cropping')}
                       </Button>
                       
                       {cropArea && (
                         <div className="space-y-2">
                           <div className="p-3 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800">
                             <p className="text-sm text-green-700 dark:text-green-300">
-                              ✓ {Math.round(cropArea.w)} × {Math.round(cropArea.h)}px selected
+                              ✓ {t('{width} × {height}px selected', { width: Math.round(cropArea.w), height: Math.round(cropArea.h) })}
                             </p>
                           </div>
                           <div className="flex gap-2">
                             <Button className="flex-1" onClick={applyCrop} disabled={isProcessing}>
-                              <Check className="h-4 w-4 mr-2" /> Apply Crop
+                              <Check className="h-4 w-4 mr-2" /> {t('Apply Crop')}
                             </Button>
-                            <Button variant="outline" onClick={() => setCropArea(null)}>Clear</Button>
+                            <Button variant="outline" onClick={() => setCropArea(null)}>{t('Clear')}</Button>
                           </div>
                         </div>
                       )}
@@ -1246,7 +1246,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                     
                     <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
                       <p className="text-xs text-blue-700 dark:text-blue-300">
-                        💡 Click and drag on the image to select crop area, then click "Apply Crop"
+                        💡 {t('Click and drag on the image to select crop area, then click "Apply Crop"')}
                       </p>
                     </div>
                     
@@ -1255,21 +1255,21 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                   
                   {/* Text/Watermark tab */}
                   <TabsContent value="text" className="mt-0 space-y-4">
-                    <div className="grid grid-cols-2 gap-2"><Button variant={state.watermarkKind === 'text' ? 'default' : 'outline'} size="sm" onClick={() => setState(s => ({ ...s, watermarkKind: 'text' }))}>Text</Button><Button variant={state.watermarkKind === 'image' ? 'default' : 'outline'} size="sm" onClick={() => setState(s => ({ ...s, watermarkKind: 'image' }))}>Logo / Image</Button></div>
+                    <div className="grid grid-cols-2 gap-2"><Button variant={state.watermarkKind === 'text' ? 'default' : 'outline'} size="sm" onClick={() => setState(s => ({ ...s, watermarkKind: 'text' }))}>{t('Text')}</Button><Button variant={state.watermarkKind === 'image' ? 'default' : 'outline'} size="sm" onClick={() => setState(s => ({ ...s, watermarkKind: 'image' }))}>{t('Logo / Image')}</Button></div>
                     {state.watermarkKind === 'text' ? <>
-                      <div className="space-y-2"><Label className="text-xs">Watermark Text</Label><Input value={state.watermarkText} onChange={(e) => setState(s => ({ ...s, watermarkText: e.target.value }))} placeholder="Enter watermark..." /></div>
+                      <div className="space-y-2"><Label className="text-xs">{t('Watermark Text')}</Label><Input value={state.watermarkText} onChange={(e) => setState(s => ({ ...s, watermarkText: e.target.value }))} placeholder={t('Enter watermark...')} /></div>
                       <div className="grid grid-cols-3 gap-2">
-                        <label className="text-xs">Font
+                        <label className="text-xs">{t('Font')}
                           <select className="mt-1 w-full rounded border bg-background p-2" value={state.watermarkFont} onChange={e => setState(s => ({ ...s, watermarkFont: e.target.value as WatermarkFont }))}>
-                            {watermarkFontOptions.map(({ value, label }) => <option value={value} key={value} style={{ fontFamily: watermarkPreviewFonts[value] }}>{label}</option>)}
+                            {watermarkFontOptions.map(({ value, label }) => <option value={value} key={value} style={{ fontFamily: watermarkPreviewFonts[value] }}>{t(label)}</option>)}
                           </select>
                         </label>
-                        <label className="text-xs">Text color<input className="mt-1 h-9 w-full" type="color" value={state.watermarkColor} onChange={e => setState(s => ({ ...s, watermarkColor: e.target.value.toUpperCase() }))} /></label>
-                        <label className="text-xs">Shadow color<input className="mt-1 h-9 w-full" type="color" value={state.watermarkShadowColor} onChange={e => setState(s => ({ ...s, watermarkShadowColor: e.target.value.toUpperCase() }))} /></label>
+                        <label className="text-xs">{t('Text color')}<input className="mt-1 h-9 w-full" type="color" value={state.watermarkColor} onChange={e => setState(s => ({ ...s, watermarkColor: e.target.value.toUpperCase() }))} /></label>
+                        <label className="text-xs">{t('Shadow color')}<input className="mt-1 h-9 w-full" type="color" value={state.watermarkShadowColor} onChange={e => setState(s => ({ ...s, watermarkShadowColor: e.target.value.toUpperCase() }))} /></label>
                       </div>
-                    </> : <div className="space-y-3 rounded border p-3"><Label className="text-xs">Use an uploaded PNG, JPEG, WebP, or SVG as a logo/image watermark</Label><select className="w-full rounded border bg-background p-2 text-sm" value={state.watermarkImageId ?? ''} onChange={e => setState(s => ({ ...s, watermarkImageId: e.target.value ? Number(e.target.value) : null }))}><option value="">Select an uploaded image</option>{libraryImages.filter(candidate => candidate.id !== currentImageId && candidate.mimeType.startsWith('image/')).map(candidate => <option value={candidate.id} key={candidate.id}>{candidate.originalFilename}</option>)}</select><label className="text-xs">Scale: {state.watermarkImageScale}% of short edge<Slider className="mt-2" value={[state.watermarkImageScale]} min={1} max={100} step={1} onValueChange={([value]) => setState(s => ({ ...s, watermarkImageScale: value }))} /></label><div className="grid grid-cols-2 gap-2"><label className="text-xs">X offset<Input type="number" min="0" value={state.watermarkOffsetX} onChange={e => setState(s => ({ ...s, watermarkOffsetX: Number(e.target.value) || 0 }))} /></label><label className="text-xs">Y offset<Input type="number" min="0" value={state.watermarkOffsetY} onChange={e => setState(s => ({ ...s, watermarkOffsetY: Number(e.target.value) || 0 }))} /></label></div></div>}
+                    </> : <div className="space-y-3 rounded border p-3"><Label className="text-xs">{t('Use an uploaded PNG, JPEG, WebP, or SVG as a logo/image watermark')}</Label><select className="w-full rounded border bg-background p-2 text-sm" value={state.watermarkImageId ?? ''} onChange={e => setState(s => ({ ...s, watermarkImageId: e.target.value ? Number(e.target.value) : null }))}><option value="">{t('Select an uploaded image')}</option>{libraryImages.filter(candidate => candidate.id !== currentImageId && candidate.mimeType.startsWith('image/')).map(candidate => <option value={candidate.id} key={candidate.id}>{candidate.originalFilename}</option>)}</select><label className="text-xs">{t('Scale: {count}% of short edge', { count: state.watermarkImageScale })}<Slider className="mt-2" value={[state.watermarkImageScale]} min={1} max={100} step={1} onValueChange={([value]) => setState(s => ({ ...s, watermarkImageScale: value }))} /></label><div className="grid grid-cols-2 gap-2"><label className="text-xs">{t('X offset')}<Input type="number" min="0" value={state.watermarkOffsetX} onChange={e => setState(s => ({ ...s, watermarkOffsetX: Number(e.target.value) || 0 }))} /></label><label className="text-xs">{t('Y offset')}<Input type="number" min="0" value={state.watermarkOffsetY} onChange={e => setState(s => ({ ...s, watermarkOffsetY: Number(e.target.value) || 0 }))} /></label></div></div>}
                     <div className="space-y-2">
-                      <Label className="text-xs">Position</Label>
+                      <Label className="text-xs">{t('Position')}</Label>
                       <div className="grid grid-cols-3 gap-2 w-fit mx-auto">
                         {positions.map((pos) => (
                           <button key={pos.id} onClick={() => setState(s => ({ ...s, watermarkPosition: pos.id }))}
@@ -1283,7 +1283,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                     </div>
                     <div className="space-y-2">
                       <div className="flex justify-between">
-                        <Label className="text-xs">Font Size</Label>
+                        <Label className="text-xs">{t('Font Size')}</Label>
                         <span className="text-xs text-muted-foreground">{state.watermarkFontSize}pt</span>
                       </div>
                       <Slider 
@@ -1305,7 +1305,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                     </div>
                     <div className="space-y-2">
                       <div className="flex justify-between">
-                        <Label className="text-xs">Opacity</Label>
+                        <Label className="text-xs">{t('Opacity')}</Label>
                         <span className="text-xs text-muted-foreground">{state.watermarkOpacity}%</span>
                       </div>
                       <Slider 
@@ -1316,7 +1316,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                     </div>
                     {(state.watermarkKind === 'text' ? state.watermarkText : state.watermarkImageId) && (
                       <div className="p-3 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800">
-                        <p className="text-sm text-green-700 dark:text-green-300">✓ {state.watermarkKind === 'text' ? `"${state.watermarkText}"` : 'Image watermark'} at {state.watermarkPosition} ({state.watermarkOpacity}%)</p>
+                        <p className="text-sm text-green-700 dark:text-green-300">✓ {state.watermarkKind === 'text' ? t('Text watermark "{text}" at {position} ({opacity}%)', { text: state.watermarkText, position: t(state.watermarkPosition), opacity: state.watermarkOpacity }) : t('Image watermark at {position} ({opacity}%)', { position: t(state.watermarkPosition), opacity: state.watermarkOpacity })}</p>
                       </div>
                     )}
                     
@@ -1330,8 +1330,8 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                       <div className="flex items-center gap-2">
                         <ZoomIn className="h-5 w-5 text-primary" />
                         <div>
-                          <h4 className="font-medium text-sm">Upscale</h4>
-                          <p className="text-xs text-muted-foreground">Increase image resolution</p>
+                          <h4 className="font-medium text-sm">{t('Upscale')}</h4>
+                          <p className="text-xs text-muted-foreground">{t('Increase image resolution')}</p>
                         </div>
                       </div>
                       <div className="grid grid-cols-3 gap-2">
@@ -1361,7 +1361,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                         </Button>
                       </div>
                       <p className="text-xs text-muted-foreground text-center">
-                        {isUpscaling ? "Upscaling in progress..." : "Uses high-quality Lanczos algorithm with sharpening"}
+                        {isUpscaling ? t('Upscaling in progress...') : t('Uses high-quality Lanczos algorithm with sharpening')}
                       </p>
                     </div>
                     
@@ -1370,16 +1370,16 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                       <div className="flex items-center gap-2">
                         <Eraser className="h-5 w-5 text-primary" />
                         <div>
-                          <h4 className="font-medium text-sm">Remove Background</h4>
-                          <p className="text-xs text-muted-foreground">AI-powered background removal</p>
+                          <h4 className="font-medium text-sm">{t('Remove Background')}</h4>
+                          <p className="text-xs text-muted-foreground">{t('AI-powered background removal')}</p>
                         </div>
                       </div>
                       <Button className="w-full" onClick={handleRemoveBackground} disabled={isUpscaling || isRemovingBg || isEnhancing}>
                         {isRemovingBg ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
-                        {isRemovingBg ? "Removing..." : "Remove Background"}
+                        {isRemovingBg ? t('Removing...') : t('Remove Background')}
                       </Button>
                       <p className="text-xs text-muted-foreground text-center">
-                        {isRemovingBg ? "This may take 30-60 seconds..." : "May take 30-60 seconds"}
+                        {isRemovingBg ? t('This may take 30-60 seconds...') : t('May take 30-60 seconds')}
                       </p>
                     </div>
                     
@@ -1388,13 +1388,13 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                       <div className="flex items-center gap-2">
                         <Wand2 className="h-5 w-5 text-primary" />
                         <div>
-                          <h4 className="font-medium text-sm">Auto Enhance</h4>
-                          <p className="text-xs text-muted-foreground">Improve colors & quality</p>
+                          <h4 className="font-medium text-sm">{t('Auto Enhance')}</h4>
+                          <p className="text-xs text-muted-foreground">{t('Improve colors & quality')}</p>
                         </div>
                       </div>
                       <Button variant="outline" className="w-full" onClick={handleAutoEnhance} disabled={isUpscaling || isRemovingBg || isEnhancing}>
                         {isEnhancing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                        {isEnhancing ? "Enhancing..." : "Auto Enhance"}
+                        {isEnhancing ? t('Enhancing...') : t('Auto Enhance')}
                       </Button>
                     </div>
                     
@@ -1407,7 +1407,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
               <div className="border-t p-4 space-y-3">
                 <div className="flex gap-2">
                   <div className="flex-1 space-y-1">
-                    <Label className="text-xs">Format</Label>
+                    <Label className="text-xs">{t('Format')}</Label>
                     <select value={outputFormat} onChange={(e) => setOutputFormat(e.target.value)}
                       className="w-full h-9 rounded-md border bg-background px-3 text-sm">
                       <option value="webp">WebP</option>
@@ -1416,14 +1416,14 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                     </select>
                   </div>
                   <div className="flex-1 space-y-1">
-                    <Label className="text-xs">Quality: {quality}%</Label>
+                    <Label className="text-xs">{t('Quality: {count}%', { count: quality })}</Label>
                     <Slider value={[quality]} onValueChange={([v]) => setLocalQuality(v)} min={1} max={100} className="mt-2" />
                   </div>
                 </div>
                 
                 <Button className="w-full" size="lg" onClick={handleDownload} disabled={isProcessing}>
                   {isProcessing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Download className="h-4 w-4 mr-2" />}
-                  Download
+                  {t('Download')}
                 </Button>
               </div>
             </div>
@@ -1434,12 +1434,12 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
       {/* Save dialog */}
       <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Unsaved Changes</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground">You have unsaved changes. What would you like to do?</p>
+          <DialogHeader><DialogTitle>{t('Unsaved Changes')}</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">{t('You have unsaved changes. What would you like to do?')}</p>
           <DialogFooter className="gap-2">
-            <Button variant="ghost" onClick={() => { setShowSaveDialog(false); setPendingTab(null); }}>Cancel</Button>
-            <Button variant="outline" onClick={discardAndContinue}>Discard</Button>
-            <Button onClick={saveAndContinue}>Save Changes</Button>
+            <Button variant="ghost" onClick={() => { setShowSaveDialog(false); setPendingTab(null); }}>{t('Cancel')}</Button>
+            <Button variant="outline" onClick={discardAndContinue}>{t('Discard')}</Button>
+            <Button onClick={saveAndContinue}>{t('Save Changes')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
