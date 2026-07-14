@@ -37,7 +37,7 @@ IMAGEMAGICK_DISK_LIMIT=4GB
 # Upload Settings
 # ===================
 # Maximum file size
-MAX_UPLOAD_SIZE=50MB
+MAX_UPLOAD_SIZE_MB=50
 
 # Allowed file extensions
 ALLOWED_EXTENSIONS=jpg,jpeg,png,gif,webp,tiff,pdf,svg,avif
@@ -125,7 +125,7 @@ These limits protect your server from resource exhaustion:
 ### Upload Settings
 
 ```env
-MAX_UPLOAD_SIZE=50MB
+MAX_UPLOAD_SIZE_MB=50
 ALLOWED_EXTENSIONS=jpg,jpeg,png,gif,webp,tiff,pdf,svg,avif
 ```
 
@@ -150,7 +150,7 @@ services:
   app:
     environment:
       - SECRET_KEY=my-production-secret
-      - MAX_UPLOAD_SIZE=100MB
+      - MAX_UPLOAD_SIZE_MB=50
     ports:
       - "8080:3000"  # Change frontend port
     volumes:
@@ -179,7 +179,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES=30
 # Conservative limits
 IMAGEMAGICK_TIMEOUT=30
 IMAGEMAGICK_MEMORY_LIMIT=1GB
-MAX_UPLOAD_SIZE=25MB
+MAX_UPLOAD_SIZE_MB=25
 
 # Disable debug
 DEBUG=false

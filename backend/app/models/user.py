@@ -47,7 +47,7 @@ class User(Base):
         """Get default user settings"""
         return {
             "theme": "system",  # light, dark, system
-            "max_upload_size_mb": 100,
+            "max_upload_size_mb": 50,
             "default_quality": 85,
             "default_format": "webp",
             "max_parallel_jobs": 5,

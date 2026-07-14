@@ -27,9 +27,17 @@ DEFAULT_SETTINGS = {
 }
 
 
+def effective_upload_limit(value: object) -> int:
+    """Do not expose a stale per-user preference above the service cap."""
+    try:
+        return min(max(int(value), 1), app_settings.max_upload_size_mb)
+    except (TypeError, ValueError):
+        return app_settings.max_upload_size_mb
+
+
 class UserSettingsRequest(BaseModel):
     theme: Optional[str] = None  # light, dark, system
-    max_upload_size_mb: Optional[int] = Field(None, ge=1, le=500)
+    max_upload_size_mb: Optional[int] = Field(None, ge=1, le=50)
     default_quality: Optional[int] = Field(None, ge=1, le=100)
     default_format: Optional[str] = None
     max_parallel_jobs: Optional[int] = Field(None, ge=1, le=20)
@@ -62,7 +70,9 @@ async def get_settings(
     
     return UserSettingsResponse(
         theme=settings.get("theme", DEFAULT_SETTINGS["theme"]),
-        max_upload_size_mb=settings.get("max_upload_size_mb", DEFAULT_SETTINGS["max_upload_size_mb"]),
+        max_upload_size_mb=effective_upload_limit(
+            settings.get("max_upload_size_mb", DEFAULT_SETTINGS["max_upload_size_mb"])
+        ),
         default_quality=settings.get("default_quality", DEFAULT_SETTINGS["default_quality"]),
         default_format=settings.get("default_format", DEFAULT_SETTINGS["default_format"]),
         max_parallel_jobs=settings.get("max_parallel_jobs", DEFAULT_SETTINGS["max_parallel_jobs"]),
@@ -85,7 +95,9 @@ async def update_settings(
         # Return the requested settings without persisting
         return UserSettingsResponse(
             theme=request.theme or DEFAULT_SETTINGS["theme"],
-            max_upload_size_mb=request.max_upload_size_mb or DEFAULT_SETTINGS["max_upload_size_mb"],
+            max_upload_size_mb=effective_upload_limit(
+                request.max_upload_size_mb or DEFAULT_SETTINGS["max_upload_size_mb"]
+            ),
             default_quality=request.default_quality or DEFAULT_SETTINGS["default_quality"],
             default_format=request.default_format or DEFAULT_SETTINGS["default_format"],
             max_parallel_jobs=request.max_parallel_jobs or DEFAULT_SETTINGS["max_parallel_jobs"],
@@ -132,7 +144,9 @@ async def update_settings(
     
     return UserSettingsResponse(
         theme=settings.get("theme", DEFAULT_SETTINGS["theme"]),
-        max_upload_size_mb=settings.get("max_upload_size_mb", DEFAULT_SETTINGS["max_upload_size_mb"]),
+        max_upload_size_mb=effective_upload_limit(
+            settings.get("max_upload_size_mb", DEFAULT_SETTINGS["max_upload_size_mb"])
+        ),
         default_quality=settings.get("default_quality", DEFAULT_SETTINGS["default_quality"]),
         default_format=settings.get("default_format", DEFAULT_SETTINGS["default_format"]),
         max_parallel_jobs=settings.get("max_parallel_jobs", DEFAULT_SETTINGS["max_parallel_jobs"]),

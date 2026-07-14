@@ -93,7 +93,7 @@ export function UploadZone() {
   const { getRootProps, getInputProps, isDragActive, isDragAccept, isDragReject } = useDropzone({
     onDrop,
     accept: ACCEPTED_TYPES,
-    maxSize: 100 * 1024 * 1024, // 100MB
+    maxSize: 50 * 1024 * 1024, // 50MB hard service limit
     disabled: uploading,
     noClick: false,
     noKeyboard: false,

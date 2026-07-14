@@ -79,10 +79,10 @@ Common issues and solutions for ImageMagick WebGUI.
 
 **Solutions:**
 
-1. Check MAX_UPLOAD_SIZE in .env (default: 50MB)
+1. Check MAX_UPLOAD_SIZE_MB in .env (hard maximum: 50MB)
 2. For larger files, increase limit:
    ```env
-   MAX_UPLOAD_SIZE=100MB
+   MAX_UPLOAD_SIZE_MB=50
    ```
 
 ### Unsupported Format

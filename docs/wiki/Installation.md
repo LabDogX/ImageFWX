@@ -119,7 +119,7 @@ Restart: `docker compose restart`
 environment:
   - DEFAULT_OUTPUT_FORMAT=avif     # avif, webp, jpeg, png
   - DEFAULT_QUALITY=90             # 1-100
-  - MAX_UPLOAD_SIZE_MB=200         # Maximum file size
+  - MAX_UPLOAD_SIZE_MB=50          # Hard maximum size of one file (MB)
   - IMAGEMAGICK_TIMEOUT=600        # Processing timeout (seconds)
 ```
 
@@ -296,7 +296,7 @@ docker compose logs app | grep -i error
 # Increase upload size:
 # Edit docker-compose.yml:
 environment:
-  - MAX_UPLOAD_SIZE_MB=500
+  - MAX_UPLOAD_SIZE_MB=50
 ```
 
 ### Can't connect from other devices

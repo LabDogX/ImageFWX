@@ -189,6 +189,7 @@ reached. Changes take effect after `docker compose up -d --build`.
 - Change all three required secrets before first startup.
 - ImageMagick commands are built from validated operation parameters with
   timeout and resource limits; image and NAS files are MIME-validated.
+- A browser upload or NAS import is limited to 50 MB per file.
 
 ## Development and verification
 

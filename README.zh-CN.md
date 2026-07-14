@@ -147,6 +147,7 @@ CLEANUP_INTERVAL_MINUTES=60
 - 不要发布 PostgreSQL 或 Redis 端口。
 - 首次启动前替换三个必填密钥。
 - ImageMagick 命令基于已验证的操作参数构建，并设有超时和资源限制；图片与 NAS 文件均做 MIME 校验。
+- 浏览器上传和 NAS 导入的单文件上限均为 50 MB。
 
 ## 开发与验证
 

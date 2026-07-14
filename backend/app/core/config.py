@@ -6,6 +6,8 @@ from typing import Optional, List
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field, field_validator
 
+MAX_SINGLE_FILE_SIZE_MB = 50
+
 
 class Settings(BaseSettings):
     """Application settings with environment variable support"""
@@ -26,7 +28,10 @@ class Settings(BaseSettings):
     redis_url: str = Field(default="redis://localhost:6379/0")
     
     # File handling
-    max_upload_size_mb: int = 100
+    # This is a hard service-wide limit for both browser uploads and NAS
+    # imports. Keep it capped even if an older .env still contains a larger
+    # value from a previous release.
+    max_upload_size_mb: int = Field(default=MAX_SINGLE_FILE_SIZE_MB, ge=1)
     allowed_extensions: List[str] = [
         ".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg", 
         ".tiff", ".tif", ".pdf", ".bmp", ".ico", ".heic", ".heif", ".avif"
@@ -103,6 +108,12 @@ class Settings(BaseSettings):
         if isinstance(v, str):
             return v.lower() in ('true', '1', 'yes', 'on')
         return bool(v)
+
+    @field_validator('max_upload_size_mb')
+    @classmethod
+    def cap_single_file_size(cls, value: int) -> int:
+        """Keep the configured limit at or below the service hard cap."""
+        return min(value, MAX_SINGLE_FILE_SIZE_MB)
     
     @field_validator('google_client_id', 'google_client_secret', mode='before')
     @classmethod
