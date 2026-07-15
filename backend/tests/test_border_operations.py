@@ -2,8 +2,10 @@ import pytest
 from pydantic import ValidationError
 
 from app.api.operations import BorderParams, Operation
+from app.api.templates import TemplateWriteRequest
 from app.services.imagemagick import (
     ImageMagickService, build_border_arguments, calculate_border_pixels, calculate_target_canvas,
+    extract_exif_watermark_fields,
     validate_hex_color,
 )
 
@@ -53,6 +55,26 @@ def test_matte_only_expands_and_meets_ratio():
     assert abs(width / height - 4 / 5) <= 1 / min(width, height)
 
 
+def test_generated_frame_dimensions_and_source_offsets():
+    gradient = border(
+        style="gradient", top=10, right=20, bottom=30, left=40,
+        gradient_start="#112233", gradient_end="#DDEEFF", gradient_angle=45,
+    )
+    args, dimensions = build_border_arguments(1000, 800, gradient)
+    assert dimensions == (1060, 840)
+    assert "-geometry +40+10" in args
+    assert "gradient:'#112233-#DDEEFF'" in args
+
+    frosted = border(
+        mode="matte", style="frosted", top=10, right=20, bottom=30, left=40,
+        target_ratio="1:1", frosted_blur=20, frosted_tint="#FFFFFF",
+    )
+    args, dimensions = build_border_arguments(1000, 800, frosted)
+    assert dimensions == (1060, 1060)
+    assert "-geometry +40+120" in args
+    assert "-blur 0x20" in args
+
+
 @pytest.mark.parametrize("value,valid", [("#abc", True), ("#A1B2C3", True), ("#11223344", True), ("red", False), ("#12", False), ("#abcdefgh", False)])
 def test_hex_colors(value, valid):
     assert validate_hex_color(value) is valid
@@ -91,6 +113,38 @@ def test_text_and_image_watermark_params_are_strictly_validated():
         Operation(operation="watermark", params={"text": "x", "font": "untrusted.ttf"})
     with pytest.raises(ValidationError):
         Operation(operation="watermark", params={"text": "too large", "font_size": 513})
+
+
+def test_watermark_stack_validates_all_fixed_layers():
+    stack = Operation(operation="watermark-stack", params={
+        "logo": {"enabled": True, "image_id": 12},
+        "primary_text": {"enabled": True, "text": "Primary"},
+        "secondary_text": {"enabled": True, "text": "Secondary", "font": "serif"},
+        "exif": {"enabled": True, "fields": ["camera", "iso", "shutter_speed"]},
+    })
+    assert stack.params["logo"]["image_id"] == 12
+    assert stack.params["secondary_text"]["font"] == "serif"
+    with pytest.raises(ValidationError):
+        Operation(operation="watermark-stack", params={"logo": {"enabled": True}})
+    with pytest.raises(ValidationError):
+        Operation(operation="watermark-stack", params={"exif": {"fields": ["gps"]}})
+
+
+def test_template_payloads_use_the_same_strict_operation_contract():
+    border_template = TemplateWriteRequest(
+        name="  My   gradient  ", kind="border",
+        payload={"style": "gradient", "gradient_start": "#123", "gradient_end": "#456"},
+    )
+    assert border_template.name == "My gradient"
+    assert border_template.validated_payload()["style"] == "gradient"
+    with pytest.raises(ValidationError):
+        TemplateWriteRequest(
+            name="Unsafe", kind="border", payload={"style": "gradient", "gradient_start": "red"},
+        ).validated_payload()
+    with pytest.raises(ValidationError):
+        TemplateWriteRequest(
+            name="Unsafe", kind="watermark", payload={"primary_text": {"font": "outside.ttf"}},
+        ).validated_payload()
 
 
 @pytest.mark.asyncio
@@ -189,3 +243,31 @@ async def test_image_watermark_command_uses_validated_internal_path(tmp_path, mo
     }])
     assert "-resize 160x" in command
     assert "-geometry +4+6 -composite" in command
+
+
+@pytest.mark.asyncio
+async def test_watermark_stack_builds_logo_text_and_exif_layers(tmp_path, monkeypatch):
+    from PIL import Image
+
+    source, logo = tmp_path / "source.jpg", tmp_path / "logo.png"
+    exif = Image.Exif()
+    exif[271], exif[272], exif[34855], exif[33437], exif[33434], exif[37386] = (
+        "Canon", "R6", 400, (28, 10), (1, 125), (50, 1),
+    )
+    Image.new("RGB", (1000, 800), "white").save(source, exif=exif)
+    Image.new("RGBA", (100, 50), (0, 0, 0, 128)).save(logo)
+    monkeypatch.setattr(ImageMagickService, "_get_magick_cmd", lambda self: __import__("asyncio").sleep(0, result="magick"))
+
+    command = await ImageMagickService().build_command(str(source), str(tmp_path / "out.png"), [{
+        "operation": "watermark-stack", "params": {
+            "logo": {"enabled": True, "image_path": str(logo), "scale": 10, "position": "northwest", "opacity": 1, "offset_x": 0, "offset_y": 0},
+            "primary_text": {"enabled": True, "text": "Primary", "font": "noto-sans-sc", "font_size": 24, "position": "southwest", "opacity": .7, "color": "#FFFFFF", "shadow_color": "#000000", "offset_x": 0, "offset_y": 0},
+            "secondary_text": {"enabled": True, "text": "Secondary", "font": "serif", "font_size": 18, "position": "southwest", "opacity": .7, "color": "#FFFFFF", "shadow_color": "#000000", "offset_x": 0, "offset_y": 42},
+            "exif": {"enabled": True, "fields": ["camera", "aperture", "shutter_speed", "iso", "focal_length"], "separator": " · ", "font": "mono", "font_size": 16, "position": "southeast", "opacity": .7, "color": "#FFFFFF", "shadow_color": "#000000", "offset_x": 0, "offset_y": 0},
+        },
+    }])
+    assert "-resize 80x" in command
+    assert "Primary" in command and "Secondary" in command
+    assert "Canon R6" in command and "f/2.8" in command and "1/125s" in command
+    assert "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf" in command
+    assert extract_exif_watermark_fields(str(source))["iso"] == "ISO 400"

@@ -205,6 +205,31 @@ export const nasApi = {
   status: async () => (await api.get('/api/nas/status')).data,
   browse: async (path = '') => (await api.get('/api/nas/browse', { params: { path } })).data,
   import: async (relativePaths: string[]) => (await api.post('/api/nas/import', { relative_paths: relativePaths })).data,
+  thumbnail: async (path: string): Promise<Blob> => (await api.get('/api/nas/thumbnail', { params: { path }, responseType: 'blob' })).data,
+};
+
+export type SavedTemplateKind = 'border' | 'watermark';
+export interface SavedTemplate {
+  id: number;
+  name: string;
+  kind: SavedTemplateKind;
+  payload: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export const templatesApi = {
+  list: async (kind?: SavedTemplateKind): Promise<SavedTemplate[]> => {
+    const { data } = await api.get('/api/templates', { params: kind ? { kind } : undefined });
+    return data;
+  },
+  create: async (name: string, kind: SavedTemplateKind, payload: Record<string, unknown>): Promise<SavedTemplate> => {
+    const { data } = await api.post('/api/templates', { name, kind, payload });
+    return data;
+  },
+  remove: async (templateId: number): Promise<void> => {
+    await api.delete(`/api/templates/${templateId}`);
+  },
 };
 
 // Operations API

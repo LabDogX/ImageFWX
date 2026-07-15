@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Added account-private, validated border and four-layer watermark templates.
+- Added a four-layer watermark stack: logo, primary text, secondary text, and
+  per-photo EXIF camera data. GPS metadata is intentionally excluded.
+- Added original frosted-glass and validated two-color gradient frame styles;
+  condensed overlapping solid-frame presets into a smaller distinct set.
+- Added Inter and Open Sans watermark choices with Docker-installed font files
+  and a dedicated font-license notice.
+- Added an authenticated, lazy-loaded NAS thumbnail view alongside the existing
+  list view. Generated thumbnails are cached only under the application temp
+  directory; the read-only NAS source is never modified.
 - Added configurable, retention-based storage cleanup for expired image
   records/upload copies/thumbnails, orphaned uploads, temporary work files,
   and processed exports. The worker never scans the read-only NAS source.

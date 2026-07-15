@@ -7,6 +7,7 @@ import re
 import shlex
 import asyncio
 import subprocess
+import math
 from typing import List, Dict, Optional, Tuple, Literal
 from pathlib import Path
 import uuid
@@ -35,6 +36,12 @@ WATERMARK_FONT_FAMILIES = {
     "serif-italic": "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Italic.ttf",
     "mono": "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
     "mono-bold": "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf",
+    # Latin display and interface options installed from Debian packages with
+    # upstream commercial-use-friendly open licenses (see NOTICE-FONTS.md).
+    "inter": "/usr/share/fonts/opentype/inter/Inter-Regular.otf",
+    "inter-bold": "/usr/share/fonts/opentype/inter/Inter-Bold.otf",
+    "open-sans": "/usr/share/fonts/truetype/open-sans/OpenSans-Regular.ttf",
+    "open-sans-bold": "/usr/share/fonts/truetype/open-sans/OpenSans-Bold.ttf",
     # Keep these legacy IDs so existing saved jobs remain compatible.
     "source-han-sans": "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
     "source-han-serif": "/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc",
@@ -111,47 +118,124 @@ def calculate_target_canvas(width: int, height: int, target_ratio: str) -> Tuple
     return round(height * rw / rh), height
 
 
+def _alignment_padding(available: int, alignment: str) -> int:
+    """Return leading free space for one axis of a larger matte canvas."""
+    if alignment in {"left", "top"}:
+        return 0
+    if alignment in {"right", "bottom"}:
+        return available
+    return available // 2
+
+
+def _border_canvas_dimensions(
+    width: int, height: int, params: Dict, outer: Dict[str, int],
+) -> Tuple[int, int, int, int]:
+    """Calculate final canvas dimensions and the source origin within it."""
+    framed_w = width + outer["left"] + outer["right"]
+    framed_h = height + outer["top"] + outer["bottom"]
+    target_w, target_h = framed_w, framed_h
+    if params["mode"] == "matte" and params["target_ratio"] != "original":
+        target_w, target_h = calculate_target_canvas(framed_w, framed_h, params["target_ratio"])
+    extra_x = _alignment_padding(target_w - framed_w, params["horizontal_alignment"])
+    extra_y = _alignment_padding(target_h - framed_h, params["vertical_alignment"])
+    return target_w, target_h, outer["left"] + extra_x, outer["top"] + extra_y
+
+
+def _build_generated_border_canvas(
+    style: str,
+    params: Dict,
+    canvas_w: int,
+    canvas_h: int,
+    source_x: int,
+    source_y: int,
+) -> List[str]:
+    """Build a generated gradient or frosted canvas and composite the source.
+
+    The parenthesized expression creates a second canvas, then ``-swap`` makes
+    it the background before compositing the source at the exact offset. This
+    avoids the ambiguous ``-extent`` offsets that previously shifted photos.
+    """
+    placement = f"{source_x:+d}{source_y:+d}"
+    if style == "gradient":
+        gradient = shlex.quote(f"{params['gradient_start']}-{params['gradient_end']}")
+        # A diagonal-sized source survives any validated rotation before the
+        # final canvas is center-cropped. Using the final rectangle directly
+        # loses pixels at 90/270 degrees on ImageMagick 6 and 7.
+        gradient_size = math.ceil(math.hypot(canvas_w, canvas_h))
+        return [
+            "\\(", f"-size {gradient_size}x{gradient_size}", f"gradient:{gradient}",
+            f"-rotate {int(params['gradient_angle'])}", "-gravity Center",
+            f"-crop {canvas_w}x{canvas_h}+0+0", "+repage", "\\)",
+            "-swap 0,1", "-gravity NorthWest", f"-geometry {placement}",
+            "-compose over", "-composite", "+repage",
+        ]
+
+    # Frosted frames are derived from a blurred clone of the source; no
+    # external texture or unvalidated asset is involved.
+    tint = shlex.quote(params["frosted_tint"])
+    tint_percent = round(float(params["frosted_tint_opacity"]) * 100)
+    return [
+        "\\(", "+clone", f"-resize {canvas_w}x{canvas_h}^", "-gravity Center",
+        f"-extent {canvas_w}x{canvas_h}", f"-blur 0x{int(params['frosted_blur'])}",
+        f"-fill {tint}", f"-colorize {tint_percent}%", "\\)",
+        "-swap 0,1", "-gravity NorthWest", f"-geometry {placement}",
+        "-compose over", "-composite", "+repage",
+    ]
+
+
 def build_border_arguments(width: int, height: int, params: Dict) -> Tuple[List[str], Tuple[int, int]]:
     """Build ImageMagick arguments for a validated border operation.
 
-    Asymmetric outer margins use one ``-splice`` operation per edge.  Unlike
-    ``-extent`` offsets, splice directions are unambiguous and never crop the
-    source image when EXIF orientation or a prior resize changes its canvas.
-    All values arrive from validated Pydantic data.
+    Solid frames use directional ``-splice`` calls. Generated frames use a
+    composited canvas so gradients and frosted backgrounds still respect all
+    four independent margins and matte alignment without ever cropping.
     """
     outer = calculate_border_pixels(width, height, params)
     args: List[str] = []
     current_w, current_h = width, height
     if params["mode"] == "double" and params["inner_size"]:
-        inner = percentage_to_pixels(min(width, height), params["inner_size"]) if params["inner_unit"] == "percent" else int(params["inner_size"])
+        inner = (
+            percentage_to_pixels(min(width, height), params["inner_size"])
+            if params["inner_unit"] == "percent" else int(params["inner_size"])
+        )
         args += [f"-bordercolor {shlex.quote(params['inner_color'])}", f"-border {inner}x{inner}", "+repage"]
         current_w += inner * 2
         current_h += inner * 2
 
-    framed_w = current_w + outer["left"] + outer["right"]
-    framed_h = current_h + outer["top"] + outer["bottom"]
-    args += [f"-background {shlex.quote(params['color'])}"]
-    edge_splices = (
-        ("North", f"0x{outer['top']}"),
-        ("East", f"{outer['right']}x0"),
-        ("South", f"0x{outer['bottom']}"),
-        ("West", f"{outer['left']}x0"),
+    style = params.get("style", "solid")
+    target_w, target_h, source_x, source_y = _border_canvas_dimensions(
+        current_w, current_h, params, outer,
     )
-    for gravity, geometry in edge_splices:
-        if geometry != "0x0":
-            args += [f"-gravity {gravity}", f"-splice {geometry}"]
-    args.append("+repage")
-    current_w, current_h = framed_w, framed_h
-
-    if params["mode"] == "matte" and params["target_ratio"] != "original":
-        target_w, target_h = calculate_target_canvas(current_w, current_h, params["target_ratio"])
-        gravity = {
-            ("left", "top"): "NorthWest", ("center", "top"): "North", ("right", "top"): "NorthEast",
-            ("left", "center"): "West", ("center", "center"): "Center", ("right", "center"): "East",
-            ("left", "bottom"): "SouthWest", ("center", "bottom"): "South", ("right", "bottom"): "SouthEast",
-        }[(params["horizontal_alignment"], params["vertical_alignment"])]
-        args += [f"-gravity {gravity}", f"-background {shlex.quote(params['color'])}", f"-extent {target_w}x{target_h}", "+repage"]
+    if style in {"gradient", "frosted"}:
+        args += _build_generated_border_canvas(
+            style, params, target_w, target_h, source_x, source_y,
+        )
         current_w, current_h = target_w, target_h
+    else:
+        framed_w = current_w + outer["left"] + outer["right"]
+        framed_h = current_h + outer["top"] + outer["bottom"]
+        args += [f"-background {shlex.quote(params['color'])}"]
+        edge_splices = (
+            ("North", f"0x{outer['top']}"),
+            ("East", f"{outer['right']}x0"),
+            ("South", f"0x{outer['bottom']}"),
+            ("West", f"{outer['left']}x0"),
+        )
+        for gravity, geometry in edge_splices:
+            if geometry != "0x0":
+                args += [f"-gravity {gravity}", f"-splice {geometry}"]
+        args.append("+repage")
+        current_w, current_h = framed_w, framed_h
+
+        if params["mode"] == "matte" and params["target_ratio"] != "original":
+            gravity = {
+                ("left", "top"): "NorthWest", ("center", "top"): "North", ("right", "top"): "NorthEast",
+                ("left", "center"): "West", ("center", "center"): "Center", ("right", "center"): "East",
+                ("left", "bottom"): "SouthWest", ("center", "bottom"): "South", ("right", "bottom"): "SouthEast",
+            }[(params["horizontal_alignment"], params["vertical_alignment"])]
+            args += [f"-gravity {gravity}", f"-background {shlex.quote(params['color'])}", f"-extent {target_w}x{target_h}", "+repage"]
+            current_w, current_h = target_w, target_h
+
     if params.get("shadow_enabled"):
         shadow = shlex.quote(params["shadow_color"])
         opacity = round(float(params["shadow_opacity"]) * 100)
@@ -160,6 +244,108 @@ def build_border_arguments(width: int, height: int, params: Dict) -> Tuple[List[
         args += ["\\(", "+clone", f"-background {shadow}", f"-shadow {opacity}x{blur}+{offset_x}+{offset_y}", "\\)",
                  "+swap", f"-background {shlex.quote(params['color'])}", "-layers merge", "+repage"]
     return args, (current_w, current_h)
+
+
+WATERMARK_GRAVITY = {
+    "northwest": "NorthWest", "north": "North", "northeast": "NorthEast",
+    "west": "West", "center": "Center", "east": "East",
+    "southwest": "SouthWest", "south": "South", "southeast": "SouthEast",
+}
+
+
+def _scaled_watermark_font_size(font_size_base: int, image_width: Optional[int]) -> int:
+    return max(font_size_base, int(font_size_base * (image_width / 800))) if image_width else font_size_base
+
+
+def _sanitize_rendered_text(value: object) -> str:
+    """Retain Unicode text while dropping shell/control characters before quoting."""
+    return re.sub(r"[\x00-\x1f`$\\\\]", "", str(value))
+
+
+def _build_text_watermark_arguments(params: Dict, image_width: Optional[int], text: str) -> List[str]:
+    """Create safe annotate arguments for both legacy and stacked text layers."""
+    text = _sanitize_rendered_text(text)
+    if not text:
+        return []
+    font_size = _scaled_watermark_font_size(int(params.get("font_size", 24)), image_width)
+    opacity = float(params.get("opacity", 0.5))
+    shadow_offset = max(2, int(font_size * 0.05))
+    inset = max(10, int(font_size * 0.4))
+    offset_x = int(params.get("offset_x", 0))
+    offset_y = int(params.get("offset_y", 0))
+    shadow_geometry = f"{offset_x + inset + shadow_offset:+d}{offset_y + inset + shadow_offset:+d}"
+    text_geometry = f"{offset_x + inset:+d}{offset_y + inset:+d}"
+    font_name = WATERMARK_FONT_FAMILIES.get(
+        params.get("font", "noto-sans-sc"), WATERMARK_FONT_FAMILIES["noto-sans-sc"],
+    )
+    return [
+        f"-gravity {WATERMARK_GRAVITY.get(params.get('position', 'southeast').lower(), 'SouthEast')}",
+        f"-font {shlex.quote(font_name)}", f"-pointsize {font_size}",
+        f"-fill {shlex.quote(hex_to_rgba(params.get('shadow_color', '#000000'), opacity))}",
+        f"-annotate {shadow_geometry} {shlex.quote(text)}",
+        f"-fill {shlex.quote(hex_to_rgba(params.get('color', '#FFFFFF'), opacity))}",
+        f"-annotate {text_geometry} {shlex.quote(text)}",
+    ]
+
+
+def _exif_number(value: object) -> Optional[float]:
+    try:
+        if hasattr(value, "numerator") and hasattr(value, "denominator"):
+            denominator = float(value.denominator)
+            return float(value.numerator) / denominator if denominator else None
+        if isinstance(value, tuple) and len(value) == 2:
+            return float(value[0]) / float(value[1])
+        return float(value)
+    except (TypeError, ValueError, ZeroDivisionError):
+        return None
+
+
+def _safe_exif_text(value: object) -> str:
+    return _sanitize_rendered_text(value).strip()
+
+
+def extract_exif_watermark_fields(input_path: str) -> Dict[str, str]:
+    """Read selected camera fields only; GPS and arbitrary EXIF data stay private."""
+    from PIL import Image as PILImage
+
+    try:
+        with PILImage.open(input_path) as image:
+            exif = image.getexif()
+    except (OSError, ValueError):
+        return {}
+    if not exif:
+        return {}
+
+    make, model = _safe_exif_text(exif.get(271, "")), _safe_exif_text(exif.get(272, ""))
+    camera = " ".join(part for part in (make, model) if part)
+    lens = _safe_exif_text(exif.get(42036, ""))
+    captured_at = _safe_exif_text(exif.get(36867, exif.get(306, "")))
+    if len(captured_at) >= 10:
+        captured_at = captured_at[:10].replace(":", "-") + captured_at[10:]
+
+    aperture_value = _exif_number(exif.get(33437))
+    exposure_value = _exif_number(exif.get(33434))
+    focal_value = _exif_number(exif.get(37386))
+    iso = exif.get(34855)
+    iso_value = iso[0] if isinstance(iso, (list, tuple)) and iso else iso
+    values = {
+        "camera": camera,
+        "lens": lens,
+        "captured_at": captured_at,
+        "iso": f"ISO {_safe_exif_text(iso_value)}" if iso_value else "",
+        "aperture": f"f/{aperture_value:.1f}" if aperture_value else "",
+        "shutter_speed": (
+            f"1/{round(1 / exposure_value)}s" if exposure_value and exposure_value < 1
+            else f"{exposure_value:.1f}s" if exposure_value else ""
+        ),
+        "focal_length": f"{focal_value:.0f}mm" if focal_value else "",
+    }
+    return {key: value for key, value in values.items() if value}
+
+
+def build_exif_watermark_text(input_path: str, fields: List[str], separator: str) -> str:
+    values = extract_exif_watermark_fields(input_path)
+    return _sanitize_rendered_text(separator).join(values[field] for field in fields if field in values)
 
 
 class ImageMagickError(Exception):
@@ -184,7 +370,7 @@ class ImageMagickService:
         "colorize", "tint", "gamma", "level", "auto-level", "normalize",
         "enhance", "auto-orient", "auto-gamma",
         # Watermark and overlay
-        "composite", "annotate", "watermark", "image-watermark", "draw", "font", "pointsize", "fill", "gravity",
+        "composite", "annotate", "watermark", "image-watermark", "watermark-stack", "draw", "font", "pointsize", "fill", "gravity",
         # Geometry
         "extent", "trim", "shave", "border", "frame",
         # Color adjustments
@@ -452,40 +638,7 @@ class ImageMagickService:
             elif op_name == "annotate" or op_name == "watermark":
                 text = params.get("text", "")
                 if text:
-                    text = re.sub(r'[`$\\]', '', text)
-                    position = params.get("position", "southeast").lower()
-                    font_size_base = int(params.get("font_size", 24))
-                    font_size = max(font_size_base, int(font_size_base * (img_width / 800))) if img_width else font_size_base
-                    color = params.get("color", "#FFFFFF")
-                    shadow_color = params.get("shadow_color", "#000000")
-                    opacity = float(params.get("opacity", 0.5))
-                    font_name = WATERMARK_FONT_FAMILIES.get(
-                        params.get("font", "noto-sans-sc"), WATERMARK_FONT_FAMILIES["noto-sans-sc"]
-                    )
-                    
-                    gravity_map = {
-                        "northwest": "NorthWest",
-                        "north": "North", 
-                        "northeast": "NorthEast",
-                        "west": "West",
-                        "center": "Center",
-                        "east": "East",
-                        "southwest": "SouthWest",
-                        "south": "South",
-                        "southeast": "SouthEast",
-                    }
-                    gravity = gravity_map.get(position, "SouthEast")
-                    
-                    shadow_offset = max(2, int(font_size * 0.05))
-                    text_offset = max(10, int(font_size * 0.4))
-                    
-                    cmd_parts.append(f"-gravity {gravity}")
-                    cmd_parts.append(f"-font {shlex.quote(font_name)}")
-                    cmd_parts.append(f"-pointsize {font_size}")
-                    cmd_parts.append(f"-fill {shlex.quote(hex_to_rgba(shadow_color, opacity))}")
-                    cmd_parts.append(f"-annotate +{text_offset + shadow_offset}+{text_offset + shadow_offset} {shlex.quote(text)}")
-                    cmd_parts.append(f"-fill {shlex.quote(hex_to_rgba(color, opacity))}")
-                    cmd_parts.append(f"-annotate +{text_offset}+{text_offset} {shlex.quote(text)}")
+                    cmd_parts.extend(_build_text_watermark_arguments(params, img_width, text))
 
             elif op_name == "image-watermark":
                 watermark_path = params.get("image_path")
@@ -505,6 +658,35 @@ class ImageMagickService:
                 cmd_parts += ["\\(", shlex.quote(watermark_path), "-auto-orient", f"-resize {target_width}x", "-alpha set",
                               "-channel A", f"-evaluate set {round(opacity * 100)}%", "+channel", "\\)",
                               f"-gravity {gravity}", f"-geometry +{offset_x}+{offset_y}", "-composite"]
+
+            elif op_name == "watermark-stack":
+                if img_width is None or img_height is None:
+                    raise ImageMagickError("Watermark stack requires readable image dimensions")
+                logo = params.get("logo", {})
+                if logo.get("enabled"):
+                    watermark_path = logo.get("image_path")
+                    if not watermark_path or not Path(watermark_path).is_file():
+                        raise ImageMagickError("Watermark logo is unavailable")
+                    target_width = max(1, round(min(img_width, img_height) * float(logo.get("scale", 12)) / 100))
+                    gravity = WATERMARK_GRAVITY.get(logo.get("position", "northwest").lower(), "NorthWest")
+                    offset_x, offset_y = int(logo.get("offset_x", 0)), int(logo.get("offset_y", 0))
+                    cmd_parts += [
+                        "\\(", shlex.quote(watermark_path), "-auto-orient", f"-resize {target_width}x", "-alpha set",
+                        "-channel A", f"-evaluate set {round(float(logo.get('opacity', 1)) * 100)}%", "+channel", "\\)",
+                        f"-gravity {gravity}", f"-geometry {offset_x:+d}{offset_y:+d}", "-composite",
+                    ]
+
+                for layer_name in ("primary_text", "secondary_text"):
+                    layer = params.get(layer_name, {})
+                    if layer.get("enabled"):
+                        cmd_parts.extend(_build_text_watermark_arguments(layer, img_width, layer.get("text", "")))
+
+                exif = params.get("exif", {})
+                if exif.get("enabled"):
+                    exif_text = build_exif_watermark_text(
+                        input_path, exif.get("fields", []), exif.get("separator", " · "),
+                    )
+                    cmd_parts.extend(_build_text_watermark_arguments(exif, img_width, exif_text))
             
             elif op_name == "transparent":
                 color = params.get("color", "white").lower()

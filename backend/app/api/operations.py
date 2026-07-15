@@ -26,6 +26,10 @@ router = APIRouter()
 
 OutputFormat = Literal["webp", "png", "jpg", "jpeg", "gif", "avif", "tiff", "bmp"]
 PREVIEW_BUILD_FORMAT = "webp"
+WatermarkPosition = Literal[
+    "northwest", "north", "northeast", "west", "center", "east",
+    "southwest", "south", "southeast",
+]
 
 
 # Security: Path validation
@@ -86,7 +90,7 @@ class FilterParams(BaseModel):
 class WatermarkParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
     text: str = Field(min_length=1, max_length=1000)
-    position: Literal["northwest", "north", "northeast", "west", "center", "east", "southwest", "south", "southeast"] = "southeast"
+    position: WatermarkPosition = "southeast"
     font_size: int = Field(24, ge=8, le=512)
     opacity: float = Field(0.5, ge=0.1, le=1.0)
     color: str = "#FFFFFF"
@@ -113,11 +117,111 @@ class WatermarkParams(BaseModel):
 class ImageWatermarkParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
     image_id: int = Field(gt=0)
-    position: Literal["northwest", "north", "northeast", "west", "center", "east", "southwest", "south", "southeast"] = "southeast"
+    position: WatermarkPosition = "southeast"
     scale: float = Field(20, ge=1, le=100, description="Percentage of source image short edge")
     opacity: float = Field(1.0, ge=0.05, le=1.0)
     offset_x: int = Field(0, ge=0, le=5000)
     offset_y: int = Field(0, ge=0, le=5000)
+
+
+class TextWatermarkLayer(BaseModel):
+    """A validated text layer used by the four-part watermark stack."""
+
+    model_config = ConfigDict(extra="forbid")
+    enabled: bool = False
+    text: str = Field("", max_length=1000)
+    position: WatermarkPosition = "southeast"
+    font_size: int = Field(24, ge=8, le=512)
+    opacity: float = Field(0.7, ge=0.05, le=1.0)
+    color: str = "#FFFFFF"
+    shadow_color: str = "#000000"
+    font: str = Field("noto-sans-sc", min_length=1, max_length=64)
+    offset_x: int = Field(0, ge=-5000, le=5000)
+    offset_y: int = Field(0, ge=-5000, le=5000)
+
+    @field_validator("color", "shadow_color")
+    @classmethod
+    def layer_hex_only(cls, value: str) -> str:
+        from app.services.imagemagick import validate_hex_color
+        if not validate_hex_color(value):
+            raise ValueError("Color must be #RGB, #RRGGBB, or #RRGGBBAA")
+        return value.upper()
+
+    @field_validator("font")
+    @classmethod
+    def layer_font_allowlist(cls, value: str) -> str:
+        if value not in WATERMARK_FONT_FAMILIES:
+            raise ValueError("Unsupported watermark font")
+        return value
+
+class LogoWatermarkLayer(BaseModel):
+    """An uploaded image selected as a logo layer, never an arbitrary path."""
+
+    model_config = ConfigDict(extra="forbid")
+    enabled: bool = False
+    image_id: Optional[int] = Field(None, gt=0)
+    position: WatermarkPosition = "northwest"
+    scale: float = Field(12, ge=1, le=100, description="Percentage of source short edge")
+    opacity: float = Field(1.0, ge=0.05, le=1.0)
+    offset_x: int = Field(0, ge=-5000, le=5000)
+    offset_y: int = Field(0, ge=-5000, le=5000)
+
+    @model_validator(mode="after")
+    def enabled_logo_requires_image(self):
+        if self.enabled and self.image_id is None:
+            raise ValueError("Enabled logo layers require an image_id")
+        return self
+
+
+ExifField = Literal[
+    "camera", "lens", "captured_at", "iso", "aperture", "shutter_speed", "focal_length",
+]
+
+
+class ExifWatermarkLayer(BaseModel):
+    """Safe, privacy-preserving EXIF fields for a rendered watermark."""
+
+    model_config = ConfigDict(extra="forbid")
+    enabled: bool = False
+    position: WatermarkPosition = "southeast"
+    font_size: int = Field(18, ge=8, le=512)
+    opacity: float = Field(0.7, ge=0.05, le=1.0)
+    color: str = "#FFFFFF"
+    shadow_color: str = "#000000"
+    font: str = Field("noto-sans-sc", min_length=1, max_length=64)
+    offset_x: int = Field(0, ge=-5000, le=5000)
+    offset_y: int = Field(0, ge=-5000, le=5000)
+    fields: List[ExifField] = Field(
+        default_factory=lambda: ["camera", "lens", "aperture", "shutter_speed", "iso", "focal_length"],
+        min_length=1,
+        max_length=7,
+    )
+    separator: str = Field(" · ", min_length=1, max_length=8)
+
+    @field_validator("color", "shadow_color")
+    @classmethod
+    def exif_hex_only(cls, value: str) -> str:
+        from app.services.imagemagick import validate_hex_color
+        if not validate_hex_color(value):
+            raise ValueError("Color must be #RGB, #RRGGBB, or #RRGGBBAA")
+        return value.upper()
+
+    @field_validator("font")
+    @classmethod
+    def exif_font_allowlist(cls, value: str) -> str:
+        if value not in WATERMARK_FONT_FAMILIES:
+            raise ValueError("Unsupported watermark font")
+        return value
+
+
+class WatermarkStackParams(BaseModel):
+    """A fixed-order logo, primary text, secondary text and EXIF watermark."""
+
+    model_config = ConfigDict(extra="forbid")
+    logo: LogoWatermarkLayer = Field(default_factory=LogoWatermarkLayer)
+    primary_text: TextWatermarkLayer = Field(default_factory=TextWatermarkLayer)
+    secondary_text: TextWatermarkLayer = Field(default_factory=TextWatermarkLayer)
+    exif: ExifWatermarkLayer = Field(default_factory=ExifWatermarkLayer)
 
 
 class BorderParams(BaseModel):
@@ -142,8 +246,17 @@ class BorderParams(BaseModel):
     shadow_blur: int = Field(8, ge=0, le=50)
     shadow_offset_x: int = Field(0, ge=-500, le=500)
     shadow_offset_y: int = Field(8, ge=-500, le=500)
+    style: Literal["solid", "gradient", "frosted"] = "solid"
+    gradient_start: str = "#FFFFFF"
+    gradient_end: str = "#DCE8F5"
+    gradient_angle: int = Field(90, ge=0, le=360)
+    frosted_blur: int = Field(18, ge=1, le=50)
+    frosted_tint: str = "#FFFFFF"
+    frosted_tint_opacity: float = Field(0.18, ge=0, le=1)
 
-    @field_validator("color", "inner_color", "shadow_color")
+    @field_validator(
+        "color", "inner_color", "shadow_color", "gradient_start", "gradient_end", "frosted_tint",
+    )
     @classmethod
     def hex_color_only(cls, value: str) -> str:
         from app.services.imagemagick import validate_hex_color
@@ -175,6 +288,8 @@ class Operation(BaseModel):
             self.params = WatermarkParams.model_validate(self.params).model_dump()
         elif operation_name == "image-watermark":
             self.params = ImageWatermarkParams.model_validate(self.params).model_dump()
+        elif operation_name == "watermark-stack":
+            self.params = WatermarkStackParams.model_validate(self.params).model_dump()
         return self
 
 
@@ -182,16 +297,20 @@ async def resolve_image_watermark_paths(operations: List[Dict], db: AsyncSession
     """Replace public watermark IDs with validated internal paths for workers."""
     user_id = current_user.id if current_user else None
     for operation in operations:
-        if operation.get("operation", "").lower().replace("_", "-") != "image-watermark":
+        operation_name = operation.get("operation", "").lower().replace("_", "-")
+        if operation_name not in {"image-watermark", "watermark-stack"}:
             continue
         params = operation["params"]
-        result = await db.execute(select(Image).where(Image.id == params["image_id"]))
+        logo = params if operation_name == "image-watermark" else params["logo"]
+        if not logo.get("enabled", operation_name == "image-watermark"):
+            continue
+        result = await db.execute(select(Image).where(Image.id == logo["image_id"]))
         watermark = result.scalar_one_or_none()
         if not watermark or (watermark.user_id is not None and watermark.user_id != user_id):
             raise HTTPException(status_code=404, detail="Watermark image not found")
         if not (watermark.mime_type or "").startswith("image/"):
             raise HTTPException(status_code=422, detail="Watermark must be an image")
-        params["image_path"] = validate_path(watermark.file_path)
+        logo["image_path"] = validate_path(watermark.file_path)
     return operations
 
 

@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,6 +15,7 @@ from app.models.user import User
 from app.services.file_service import file_service
 from app.services.image_import_service import register_uploaded_copy
 from app.services.nas_service import nas_service
+from app.services.imagemagick import imagemagick_service
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -31,6 +33,32 @@ async def nas_status(current_user: Optional[User] = Depends(get_current_user_or_
 @router.get("/browse")
 async def browse_nas(path: str = Query(default=""), current_user: Optional[User] = Depends(get_current_user_or_enforce)):
     return await nas_service.browse(path)
+
+
+@router.get("/thumbnail")
+async def get_nas_thumbnail(
+    path: str = Query(min_length=1),
+    current_user: Optional[User] = Depends(get_current_user_or_enforce),
+):
+    """Generate a temporary, authenticated thumbnail for a safe NAS image."""
+    nas_service.require_enabled()
+    source = nas_service.resolve_relative_path(path)
+    if not source.is_file():
+        raise HTTPException(status_code=404, detail="NAS image not found")
+    valid, error, _ = await file_service.validate_local_image(source)
+    if not valid:
+        raise HTTPException(status_code=422, detail=error or "Unsupported NAS image")
+    thumbnail_path = nas_service.thumbnail_cache_path(path, source)
+    if not thumbnail_path.exists():
+        thumbnail_path.parent.mkdir(parents=True, exist_ok=True)
+        created = await imagemagick_service.create_thumbnail(str(source), str(thumbnail_path), size=300)
+        if not created or not thumbnail_path.exists():
+            raise HTTPException(status_code=422, detail="Unable to create NAS thumbnail")
+    return FileResponse(
+        thumbnail_path,
+        media_type="image/webp",
+        headers={"Cache-Control": "private, max-age=300"},
+    )
 
 
 @router.post("/import")

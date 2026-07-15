@@ -1,13 +1,18 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { BorderSettings, borderPresets, BorderPresetName, defaultBorderSettings } from '@/lib/border-presets';
 import { useLocale } from '@/components/providers/locale-provider';
+import { SavedTemplate, templatesApi } from '@/lib/api';
 
 export function BorderPanel({ value, onChange }: { value: BorderSettings; onChange: (value: BorderSettings) => void }) {
   const { t } = useLocale();
+  const [templates, setTemplates] = useState<SavedTemplate[]>([]);
+  const [templateName, setTemplateName] = useState('');
+  useEffect(() => { templatesApi.list('border').then(setTemplates).catch(() => setTemplates([])); }, []);
   const set = (changes: Partial<BorderSettings>) => onChange({ ...value, ...changes, preset: changes.preset ?? 'Custom' });
   const setSide = (side: 'top' | 'right' | 'bottom' | 'left', raw: string) => {
     const amount = Number(raw);
@@ -22,13 +27,50 @@ export function BorderPanel({ value, onChange }: { value: BorderSettings; onChan
     if (!presetSettings) return;
     onChange({ ...value, ...presetSettings, enabled: true, preset, sidesLinked: false });
   };
+  const templatePayload = (): Record<string, unknown> => ({
+    mode: value.mode, unit: value.unit, top: value.top, right: value.right, bottom: value.bottom, left: value.left,
+    color: value.color, inner_unit: value.innerUnit, inner_size: value.innerSize, inner_color: value.innerColor,
+    target_ratio: value.targetRatio, horizontal_alignment: value.horizontalAlignment, vertical_alignment: value.verticalAlignment,
+    shadow_enabled: value.shadowEnabled, shadow_color: value.shadowColor, shadow_opacity: value.shadowOpacity,
+    shadow_blur: value.shadowBlur, shadow_offset_x: value.shadowOffsetX, shadow_offset_y: value.shadowOffsetY,
+    style: value.style, gradient_start: value.gradientStart, gradient_end: value.gradientEnd, gradient_angle: value.gradientAngle,
+    frosted_blur: value.frostedBlur, frosted_tint: value.frostedTint, frosted_tint_opacity: value.frostedTintOpacity,
+  });
+  const saveTemplate = async () => {
+    if (!templateName.trim()) return;
+    try {
+      const saved = await templatesApi.create(templateName, 'border', templatePayload());
+      setTemplates(existing => [saved, ...existing]);
+      setTemplateName('');
+    } catch { /* a sign-in error is surfaced by the main request UI */ }
+  };
+  const applyTemplate = (template: SavedTemplate) => {
+    const p = template.payload as Record<string, unknown>;
+    onChange({ ...value, enabled: true, preset: 'Custom', sidesLinked: false,
+      mode: p.mode as BorderSettings['mode'], unit: p.unit as BorderSettings['unit'], top: Number(p.top), right: Number(p.right), bottom: Number(p.bottom), left: Number(p.left), color: String(p.color),
+      innerUnit: p.inner_unit as BorderSettings['innerUnit'], innerSize: Number(p.inner_size), innerColor: String(p.inner_color),
+      targetRatio: p.target_ratio as BorderSettings['targetRatio'], horizontalAlignment: p.horizontal_alignment as BorderSettings['horizontalAlignment'], verticalAlignment: p.vertical_alignment as BorderSettings['verticalAlignment'],
+      shadowEnabled: Boolean(p.shadow_enabled), shadowColor: String(p.shadow_color), shadowOpacity: Number(p.shadow_opacity), shadowBlur: Number(p.shadow_blur), shadowOffsetX: Number(p.shadow_offset_x), shadowOffsetY: Number(p.shadow_offset_y),
+      style: p.style as BorderSettings['style'], gradientStart: String(p.gradient_start), gradientEnd: String(p.gradient_end), gradientAngle: Number(p.gradient_angle),
+      frostedBlur: Number(p.frosted_blur), frostedTint: String(p.frosted_tint), frostedTintOpacity: Number(p.frosted_tint_opacity),
+    });
+  };
+  const deleteTemplate = async (templateId: number) => {
+    try { await templatesApi.remove(templateId); setTemplates(existing => existing.filter(template => template.id !== templateId)); } catch { /* keep the existing list on failure */ }
+  };
   return <div className="space-y-4 overflow-y-auto pb-4">
     <div className="flex items-center justify-between"><Label>{t('Enable border')}</Label><input type="checkbox" checked={value.enabled} onChange={e => set({ enabled: e.target.checked })} /></div>
     <label className="text-xs font-medium">{t('Preset')}<select className="mt-1 w-full rounded border bg-background p-2" value={value.preset} onChange={e => choosePreset(e.target.value as BorderPresetName)}>{([...Object.keys(borderPresets), 'Custom'] as BorderPresetName[]).map(name => <option key={name} value={name}>{t(name)}</option>)}</select></label>
+    <div className="space-y-2 rounded border p-3"><Label className="text-xs">{t('My border templates')}</Label><div className="flex gap-2"><Input value={templateName} maxLength={80} onChange={e => setTemplateName(e.target.value)} placeholder={t('Template name')} /><Button type="button" variant="outline" onClick={saveTemplate} disabled={!templateName.trim()}>{t('Save')}</Button></div>{templates.length > 0 && <div className="flex flex-wrap gap-1">{templates.map(template => <div className="flex" key={template.id}><Button type="button" size="sm" variant="secondary" className="rounded-r-none" onClick={() => applyTemplate(template)}>{template.name}</Button><Button type="button" size="sm" variant="secondary" className="rounded-l-none border-l" aria-label={t('Delete')} onClick={() => deleteTemplate(template.id)}>×</Button></div>)}</div>}</div>
     <div className="grid grid-cols-2 gap-2"><label className="text-xs">{t('Mode')}<select className="mt-1 w-full rounded border bg-background p-2" value={value.mode} onChange={e => set({ mode: e.target.value as BorderSettings['mode'] })}><option value="custom">{t('Custom')}</option><option value="double">{t('Double')}</option><option value="matte">{t('Matte')}</option></select></label><label className="text-xs">{t('Unit')}<select className="mt-1 w-full rounded border bg-background p-2" value={value.unit} onChange={e => set({ unit: e.target.value as BorderSettings['unit'] })}><option value="percent">{t('% short edge')}</option><option value="px">px</option></select></label></div>
     <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={value.sidesLinked} onChange={e => set({ sidesLinked: e.target.checked })} /> {t('Link sides')}</label>
     <div className="grid grid-cols-2 gap-2">{(['top', 'right', 'bottom', 'left'] as const).map(side => <label key={side} className="text-xs capitalize">{t(side.charAt(0).toUpperCase() + side.slice(1))}<Input className="mt-1" type="number" min="0" value={value[side]} onChange={e => setSide(side, e.target.value)} /></label>)}</div>
     <label className="text-xs">{t('Color')}<div className="mt-1 flex gap-2"><input type="color" value={value.color} onChange={e => set({ color: e.target.value.toUpperCase() })} /><Input value={value.color} onChange={e => set({ color: e.target.value })} /></div></label>
+    <div className="space-y-2 rounded border p-3">
+      <label className="text-xs">{t('Frame style')}<select className="mt-1 w-full rounded border bg-background p-2" value={value.style} onChange={e => set({ style: e.target.value as BorderSettings['style'] })}><option value="solid">{t('Solid color')}</option><option value="gradient">{t('Gradient')}</option><option value="frosted">{t('Frosted glass')}</option></select></label>
+      {value.style === 'gradient' && <div className="grid grid-cols-3 gap-2"><label className="text-xs">{t('Start color')}<input className="mt-1 h-9 w-full" type="color" value={value.gradientStart} onChange={e => set({ gradientStart: e.target.value.toUpperCase() })} /></label><label className="text-xs">{t('End color')}<input className="mt-1 h-9 w-full" type="color" value={value.gradientEnd} onChange={e => set({ gradientEnd: e.target.value.toUpperCase() })} /></label><label className="text-xs">{t('Angle')}<Input className="mt-1" type="number" min="0" max="360" value={value.gradientAngle} onChange={e => set({ gradientAngle: Number(e.target.value) || 0 })} /></label></div>}
+      {value.style === 'frosted' && <div className="grid grid-cols-3 gap-2"><label className="text-xs">{t('Blur')}<Input className="mt-1" type="number" min="1" max="50" value={value.frostedBlur} onChange={e => set({ frostedBlur: Number(e.target.value) || 1 })} /></label><label className="text-xs">{t('Tint color')}<input className="mt-1 h-9 w-full" type="color" value={value.frostedTint} onChange={e => set({ frostedTint: e.target.value.toUpperCase() })} /></label><label className="text-xs">{t('Tint opacity')}<Input className="mt-1" type="number" min="0" max="1" step="0.05" value={value.frostedTintOpacity} onChange={e => set({ frostedTintOpacity: Number(e.target.value) || 0 })} /></label></div>}
+    </div>
     <div className="space-y-2 rounded border p-3"><label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={value.shadowEnabled} onChange={e => set({ shadowEnabled: e.target.checked })} /> {t('Floating shadow')}</label>{value.shadowEnabled && <div className="grid grid-cols-2 gap-2"><label className="text-xs">{t('Shadow color')}<input className="mt-1 h-9 w-full" type="color" value={value.shadowColor} onChange={e => set({ shadowColor: e.target.value.toUpperCase() })} /></label><label className="text-xs">{t('Blur')}<Input className="mt-1" type="number" min="0" max="50" value={value.shadowBlur} onChange={e => set({ shadowBlur: Number(e.target.value) || 0 })} /></label><label className="text-xs">{t('Opacity')}<Input className="mt-1" type="number" min="0" max="1" step="0.05" value={value.shadowOpacity} onChange={e => set({ shadowOpacity: Number(e.target.value) || 0 })} /></label><label className="text-xs">{t('Y offset')}<Input className="mt-1" type="number" value={value.shadowOffsetY} onChange={e => set({ shadowOffsetY: Number(e.target.value) || 0 })} /></label></div>}</div>
     {value.mode === 'double' && <div className="space-y-2 rounded border p-3"><Label className="text-xs">{t('Inner border')}</Label><div className="grid grid-cols-2 gap-2"><Input type="number" min="0" value={value.innerSize} onChange={e => set({ innerSize: Number(e.target.value) })} /><select className="rounded border bg-background p-2 text-xs" value={value.innerUnit} onChange={e => set({ innerUnit: e.target.value as BorderSettings['innerUnit'] })}><option value="percent">{t('% short edge')}</option><option value="px">px</option></select></div><Input value={value.innerColor} onChange={e => set({ innerColor: e.target.value })} /></div>}
     <div className="grid grid-cols-3 gap-2"><label className="col-span-3 text-xs">{t('Canvas ratio')}<select className="mt-1 w-full rounded border bg-background p-2" value={value.targetRatio} onChange={e => set({ targetRatio: e.target.value as BorderSettings['targetRatio'] })}>{['original', '1:1', '4:5', '3:2', '2:3', '16:9', '9:16'].map(r => <option key={r}>{r}</option>)}</select></label><select className="rounded border bg-background p-2 text-xs" value={value.horizontalAlignment} onChange={e => set({ horizontalAlignment: e.target.value as BorderSettings['horizontalAlignment'] })}><option value="left">{t('Left')}</option><option value="center">{t('Center')}</option><option value="right">{t('Right')}</option></select><select className="rounded border bg-background p-2 text-xs" value={value.verticalAlignment} onChange={e => set({ verticalAlignment: e.target.value as BorderSettings['verticalAlignment'] })}><option value="top">{t('Top')}</option><option value="center">{t('Center')}</option><option value="bottom">{t('Bottom')}</option></select></div>

@@ -12,7 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from app.core.database import engine, Base
-from app.models import user, image, job, project  # Import all models
+from app.models import user, image, job, project, user_template  # Import all models
 
 
 async def init_db():

@@ -69,6 +69,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     poppler-utils \
     fonts-dejavu-core \
     fonts-noto-cjk \
+    fonts-inter \
+    fonts-open-sans \
     libpq5 \
     libmagic1 \
     curl \

@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { useStore } from "@/lib/store";
 import { BorderPanel } from "@/components/features/border-panel";
 import { BorderSettings, defaultBorderSettings } from "@/lib/border-presets";
+import { WatermarkPanel, WatermarkStack, defaultWatermarkStack } from "@/components/features/watermark-panel";
 import { useLocale } from '@/components/providers/locale-provider';
 
 // Import proper API URL function
@@ -82,6 +83,7 @@ interface EditorState {
   watermarkImageScale: number;
   watermarkOffsetX: number;
   watermarkOffsetY: number;
+  watermarkStack: WatermarkStack;
   // Resize
   resizeWidth: number;
   resizeHeight: number;
@@ -115,6 +117,7 @@ const defaultState: EditorState = {
   watermarkImageScale: 20,
   watermarkOffsetX: 0,
   watermarkOffsetY: 0,
+  watermarkStack: defaultWatermarkStack,
   // Resize
   resizeWidth: 800,
   resizeHeight: 600,
@@ -220,11 +223,14 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
   const [pendingTab, setPendingTab] = useState<string | null>(null);
   const previewRequestRef = useRef(0);
   const [isBorderPreviewing, setIsBorderPreviewing] = useState(false);
+  const watermarkStackActive = state.watermarkStack.logo.enabled || state.watermarkStack.primary_text.enabled || state.watermarkStack.secondary_text.enabled || state.watermarkStack.exif.enabled;
+  const serializedBorder = JSON.stringify(state.border);
+  const serializedWatermarkStack = JSON.stringify(state.watermarkStack);
 
   // A debounced backend preview uses the exact ImageMagick command builder used
   // by export.  Old responses are ignored so a fast slider cannot repaint stale data.
   useEffect(() => {
-    if (!state.border.enabled) return;
+    if (!state.border.enabled && !watermarkStackActive) return;
     const requestId = ++previewRequestRef.current;
     const timer = window.setTimeout(async () => {
       setIsBorderPreviewing(true);
@@ -241,20 +247,20 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
     return () => window.clearTimeout(timer);
   // The serialized settings avoid a new effect from unrelated editor state.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentImageId, JSON.stringify(state.border)]);
+  }, [currentImageId, serializedBorder, serializedWatermarkStack]);
 
   // A border preview is a temporary backend-rendered image.  Once the border
   // is turned off, restore the actual library image instead of leaving the
   // last preview (which made preset changes look as if they had no effect).
   useEffect(() => {
-    if (state.border.enabled) return;
+    if (state.border.enabled || watermarkStackActive) return;
     previewRequestRef.current += 1;
     setIsBorderPreviewing(false);
     const source = isPdf
       ? `${getApiUrl()}/api/images/${currentImageId}/preview`
       : `${getApiUrl()}/api/images/${currentImageId}`;
     setImageSrc(`${source}?t=${Date.now()}`);
-  }, [currentImageId, isPdf, state.border.enabled]);
+  }, [currentImageId, isPdf, state.border.enabled, watermarkStackActive]);
   
   // Separate AI processing states
   const [isUpscaling, setIsUpscaling] = useState(false);
@@ -652,14 +658,15 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
         shadow_enabled: state.border.shadowEnabled, shadow_color: state.border.shadowColor,
         shadow_opacity: state.border.shadowOpacity, shadow_blur: state.border.shadowBlur,
         shadow_offset_x: state.border.shadowOffsetX, shadow_offset_y: state.border.shadowOffsetY,
+        style: state.border.style, gradient_start: state.border.gradientStart,
+        gradient_end: state.border.gradientEnd, gradient_angle: state.border.gradientAngle,
+        frosted_blur: state.border.frostedBlur, frosted_tint: state.border.frostedTint,
+        frosted_tint_opacity: state.border.frostedTintOpacity,
       }});
     }
     
-    if (state.watermarkKind === 'text' && state.watermarkText.trim()) {
-      ops.push({ operation: "watermark", params: { text: state.watermarkText, position: state.watermarkPosition, font_size: state.watermarkFontSize, opacity: state.watermarkOpacity / 100, color: state.watermarkColor, shadow_color: state.watermarkShadowColor, font: state.watermarkFont } });
-    } else if (state.watermarkKind === 'image' && state.watermarkImageId) {
-      ops.push({ operation: "image-watermark", params: { image_id: state.watermarkImageId, position: state.watermarkPosition, scale: state.watermarkImageScale, opacity: state.watermarkOpacity / 100, offset_x: state.watermarkOffsetX, offset_y: state.watermarkOffsetY } });
-    }
+    const watermarkActive = state.watermarkStack.logo.enabled || state.watermarkStack.primary_text.enabled || state.watermarkStack.secondary_text.enabled || state.watermarkStack.exif.enabled;
+    if (watermarkActive) ops.push({ operation: "watermark-stack", params: state.watermarkStack });
     
     return ops;
   };
@@ -1288,6 +1295,13 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                   
                   {/* Text/Watermark tab */}
                   <TabsContent value="text" className="mt-0 space-y-4">
+                    <WatermarkPanel
+                      value={state.watermarkStack}
+                      onChange={(watermarkStack) => setState(s => ({ ...s, watermarkStack }))}
+                      libraryImages={libraryImages}
+                      currentImageId={currentImageId}
+                    />
+                    <div className="hidden">
                     <div className="grid grid-cols-2 gap-2"><Button variant={state.watermarkKind === 'text' ? 'default' : 'outline'} size="sm" onClick={() => setState(s => ({ ...s, watermarkKind: 'text' }))}>{t('Text')}</Button><Button variant={state.watermarkKind === 'image' ? 'default' : 'outline'} size="sm" onClick={() => setState(s => ({ ...s, watermarkKind: 'image' }))}>{t('Logo / Image')}</Button></div>
                     {state.watermarkKind === 'text' ? <>
                       <div className="space-y-2"><Label className="text-xs">{t('Watermark Text')}</Label><Input value={state.watermarkText} onChange={(e) => setState(s => ({ ...s, watermarkText: e.target.value }))} placeholder={t('Enter watermark...')} /></div>
@@ -1352,6 +1366,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                         <p className="text-sm text-green-700 dark:text-green-300">✓ {state.watermarkKind === 'text' ? t('Text watermark "{text}" at {position} ({opacity}%)', { text: state.watermarkText, position: t(state.watermarkPosition), opacity: state.watermarkOpacity }) : t('Image watermark at {position} ({opacity}%)', { position: t(state.watermarkPosition), opacity: state.watermarkOpacity })}</p>
                       </div>
                     )}
+                    </div>
                     
                     <SaveButton />
                   </TabsContent>

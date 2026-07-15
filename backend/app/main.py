@@ -16,7 +16,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings
 from app.core.database import engine, Base
-from app.api import auth, images, operations, queue, settings as settings_api, health, projects, nas
+from app.api import auth, images, operations, queue, settings as settings_api, health, projects, nas, templates
 
 # Configure logging
 logging.basicConfig(
@@ -98,6 +98,7 @@ app.include_router(images.router, prefix="/api/images", tags=["Images"])
 app.include_router(operations.router, prefix="/api/operations", tags=["Operations"])
 app.include_router(queue.router, prefix="/api/queue", tags=["Queue"])
 app.include_router(settings_api.router, prefix="/api/settings", tags=["Settings"])
+app.include_router(templates.router, prefix="/api/templates", tags=["Templates"])
 app.include_router(projects.router, prefix="/api/projects", tags=["Projects"])
 app.include_router(nas.router, prefix="/api/nas", tags=["NAS"])
 

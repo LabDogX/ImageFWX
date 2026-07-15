@@ -20,19 +20,23 @@ ImageFWX 是一个基于 ImageMagick 的自托管照片成片工作台。它在 
 ### 相框与边框
 
 - 上、右、下、左可独立设置或联动设置；单位可选像素或每张照片短边百分比。
-- 支持安全的 `#RGB`、`#RRGGBB`、`#RRGGBBAA` 颜色、双层边框、固定比例 matte 画布、对齐与可调悬浮阴影。
-- 原创预设：Classic White、Thin Black、Polaroid、Double Gallery、Square Matte、Portrait Matte、Warm Ivory、Graphite Gallery、Wide Matte、Story Matte、Floating Paper、Double Onyx 和 Custom。
+- 支持安全的 `#RGB`、`#RRGGBB`、`#RRGGBBAA` 颜色、双层边框、固定比例 matte 画布、对齐、可调悬浮阴影、由照片本身生成的毛玻璃边框，以及经过校验的双色渐变边框。
+- 精简后的原创预设：Classic White、Thin Black、Polaroid、Double Gallery、Square Matte、Portrait Matte、Floating Paper、Frosted Glass、Sunset Gradient、Ocean Gradient 和 Custom。
+- 登录用户可将边框参数保存为仅自己账户可见的模板；模板只保存经过校验的参数，不保存原始 ImageMagick 命令。
 - 后端 ImageMagick 预览与最终导出共用同一命令构建逻辑。
 
 ### 水印
 
-- 文字水印支持九宫格位置、不透明度、字号、文字颜色、阴影颜色，以及 Sans、Serif、Mono、Noto/思源 CJK 字体；可选简体、繁体、日文、韩文与 CJK 粗体标题样式。
-- Logo/图片水印可从已上传的 PNG、JPEG、WebP 或 SVG 图片库项中选择，可设置缩放、不透明度、位置和 X/Y 偏移。
+- 水印支持固定四层组合：Logo、主文字、次要文字和拍摄 EXIF 参数；每层均可独立启停并设置位置与样式。
+- EXIF 层可按每张原图安全读取相机、镜头、拍摄时间、ISO、光圈、快门速度和焦段；绝不读取或展示 GPS 位置。
+- 内置 Sans、Serif、Mono、Noto/思源 CJK、Inter 与 Open Sans。Noto/思源覆盖简体、繁体、日文和韩文；Inter 与 Open Sans 适合拉丁文字展示。
+- 登录用户可将完整水印组合保存为仅自己账户可见的模板。
 - 图片水印请求只包含图片 ID，不接受浏览器提交服务器文件路径；后端验证访问权限后再解析内部路径。
 
 ### NAS 导入与输出
 
 - NAS 目录浏览是可选功能，默认关闭，并受既有登录验证保护。
+- 浏览时可在紧凑列表和按需加载的缩略图模式之间切换；缩略图只会生成在应用临时目录中。
 - 拒绝绝对路径、路径穿越、编码路径穿越、Windows 路径和越出 NAS 根目录的符号链接。
 - 导入前校验扩展名、MIME 类型和文件大小。
 - NAS 原图始终只读；导入副本进入 `/app/uploads`，处理结果写入 `/app/processed`。
@@ -179,7 +183,7 @@ npm audit
 
 ImageFWX 保留上游 MIT License 和版权声明。相框、NAS 导入和水印增强均为原创实现；不包含 Magick Frames 的源码、素材、配置、预设或专有命名。
 
-内置 Noto 与思源系列水印字体由 `fonts-noto-cjk` 包提供，遵循 SIL Open Font License 1.1。它们可用于商业和非商业项目，但不得作为独立字体出售；ImageFWX 不会打包 LedCover 本地字体档案中许可证无法核验的字体文件。
+Noto/思源与 Inter 遵循 SIL Open Font License 1.1，Open Sans 遵循 Apache License 2.0。它们均可在各自许可证条件下用于商业和非商业项目，但不得作为独立字体产品出售。详细信息见 [NOTICE-FONTS.md](NOTICE-FONTS.md)；ImageFWX 不会打包来源或许可证无法核验的本地字体档案。
 
 本项目使用 [ImageMagick](https://imagemagick.org/)、[rembg](https://github.com/danielgatis/rembg)、[Next.js](https://nextjs.org/)、[FastAPI](https://fastapi.tiangolo.com/)、[shadcn/ui](https://ui.shadcn.com/) 和 [Tailwind CSS](https://tailwindcss.com/)。
 

@@ -1,6 +1,7 @@
 """Read-only, path-confined NAS browsing and import helpers."""
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import hashlib
 from pathlib import Path, PureWindowsPath
 from typing import Dict, List
 from urllib.parse import unquote
@@ -44,6 +45,13 @@ class NASService:
     def relative(self, path: Path) -> str:
         relative_path = path.resolve().relative_to(self._root()).as_posix()
         return "" if relative_path == "." else relative_path
+
+    def thumbnail_cache_path(self, relative_path: str, source: Path) -> Path:
+        """Return an opaque temp-cache path without exposing the NAS path."""
+        stat = source.stat()
+        fingerprint = f"{relative_path}\0{stat.st_size}\0{stat.st_mtime_ns}".encode("utf-8")
+        digest = hashlib.sha256(fingerprint).hexdigest()
+        return Path(settings.temp_dir) / "nas-thumbnails" / f"{digest}.webp"
 
     async def browse(self, relative_path: str = "") -> Dict:
         self.require_enabled()

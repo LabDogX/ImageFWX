@@ -41,6 +41,8 @@ const zhCN: Record<string, string> = {
   'Upload failed': '上传失败', 'NAS photos': 'NAS 照片',
   'Original files stay read-only; imports are copied into the library.': '原始文件保持只读；导入时会复制到图片库。',
   'Up': '上一级', 'Select all': '全选', 'Import selected ({count})': '导入所选（{count}）',
+  'View mode': '查看模式', 'List view': '列表模式', 'Thumbnail view': '缩略图模式',
+  'Loading thumbnail': '正在加载缩略图', 'Select {name}': '选择 {name}',
   'No supported images in this folder.': '此文件夹中没有受支持的图片。',
   'Unable to browse NAS': '无法浏览 NAS', 'NAS import failed': 'NAS 导入失败',
   'Imported {count} photo(s)': '已导入 {count} 张照片', '{count} file(s) were not imported': '{count} 个文件未能导入',

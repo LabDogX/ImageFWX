@@ -92,3 +92,18 @@ async def test_browse_child_returns_relative_parent(nas_root):
     assert result["path"] == "2026"
     assert result["parent"] == ""
     assert result["directories"] == [{"name": "Trip", "relative_path": "2026/Trip"}]
+
+
+def test_thumbnail_cache_path_is_opaque_and_changes_when_source_changes(nas_root, tmp_path, monkeypatch):
+    source = nas_root / "camera.jpg"
+    source.write_bytes(b"image-data")
+    monkeypatch.setattr("app.services.nas_service.settings.temp_dir", str(tmp_path / "temp"))
+    service = NASService()
+
+    first = service.thumbnail_cache_path("camera.jpg", source)
+    assert first.parent == tmp_path / "temp" / "nas-thumbnails"
+    assert first.suffix == ".webp"
+    assert "camera" not in first.name
+
+    source.write_bytes(b"changed-image-data")
+    assert service.thumbnail_cache_path("camera.jpg", source) != first

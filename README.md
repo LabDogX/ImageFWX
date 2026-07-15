@@ -26,20 +26,27 @@ read-only NAS photo browser to a Next.js, FastAPI, PostgreSQL, and Redis stack.
 - Independent or linked top/right/bottom/left margins in pixels or percent of
   each photo's short edge.
 - Safe `#RGB`, `#RRGGBB`, and `#RRGGBBAA` colors; double borders; fixed matte
-  canvases; alignment; and configurable floating shadows.
-- Original presets: Classic White, Thin Black, Polaroid, Double Gallery, Square
-  Matte, Portrait Matte, Warm Ivory, Graphite Gallery, Wide Matte, Story Matte,
-  Floating Paper, Double Onyx, and Custom.
+  canvases; alignment; configurable floating shadows; frosted-glass frames
+  derived from the photo; and validated two-color gradients.
+- Curated original presets: Classic White, Thin Black, Polaroid, Double Gallery,
+  Square Matte, Portrait Matte, Floating Paper, Frosted Glass, Sunset Gradient,
+  Ocean Gradient, and Custom.
+- Signed-in users can save their own border templates. Templates are private to
+  the account and contain validated parameters, never raw ImageMagick commands.
 - Backend ImageMagick previews use the same command builder as final export.
 
 ### Watermarks
 
-- Text watermarks with nine-point positioning, opacity, font size, text color,
-  shadow color, and built-in Sans, Serif, Mono, plus Noto/Source Han CJK Sans
-  and Serif choices for Simplified Chinese, Traditional Chinese, Japanese, and
-  Korean. Bold CJK choices are included for titles.
-- Logo and image watermarks selected from existing uploaded PNG, JPEG, WebP, or
-  SVG library items. Set scale, opacity, position, and X/Y offsets.
+- A four-layer watermark stack: logo, primary text, secondary text, and camera
+  EXIF. Each layer can be enabled independently and has its own placement and
+  styling controls.
+- EXIF layers can safely render camera, lens, capture time, ISO, aperture,
+  shutter speed, and focal length for each source image. GPS is never read or
+  displayed.
+- Built-in Sans, Serif, Mono, Noto/Source Han CJK, Inter, and Open Sans choices.
+  Noto/Source Han cover Simplified Chinese, Traditional Chinese, Japanese, and
+  Korean; Inter and Open Sans are Latin display options.
+- Signed-in users can save their watermark stacks as account-private templates.
 - Image watermark requests contain an image ID, never a browser-provided server
   path; the backend validates access and resolves the internal file path.
 
@@ -47,6 +54,8 @@ read-only NAS photo browser to a Next.js, FastAPI, PostgreSQL, and Redis stack.
 
 - Optional NAS directory browser, disabled by default and protected by the
   existing login requirement.
+- Switch between compact list and lazy-loaded thumbnail views while browsing;
+  NAS thumbnails are generated only in application temporary storage.
 - Rejects absolute paths, traversal, encoded traversal, Windows paths, and
   symlinks that leave the NAS source root.
 - Validates extension, MIME type, and file size before copy-based import.
@@ -228,11 +237,11 @@ ImageFWX retains the upstream MIT License and copyright notices. Its frame,
 NAS-import, and watermark additions are original implementations. It does not
 include Magick Frames source code, assets, configuration, presets, or names.
 
-The built-in Noto and Source Han watermark choices are supplied by the
-`fonts-noto-cjk` package and are available under the SIL Open Font License 1.1.
-They can be used in commercial and non-commercial projects, but are not sold as
-standalone fonts. No unverified font files from the local LedCover archive are
-bundled into ImageFWX.
+Noto/Source Han and Inter are supplied under the SIL Open Font License 1.1;
+Open Sans is supplied under Apache License 2.0. They may be used in commercial
+and non-commercial projects under their respective terms, but are not sold as
+standalone fonts. See [NOTICE-FONTS.md](NOTICE-FONTS.md). No unverified local
+font archive is bundled into ImageFWX.
 
 Built with [ImageMagick](https://imagemagick.org/),
 [rembg](https://github.com/danielgatis/rembg), [Next.js](https://nextjs.org/),
