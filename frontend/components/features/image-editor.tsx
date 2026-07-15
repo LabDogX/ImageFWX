@@ -540,7 +540,11 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
   };
   
   // Save current filter/adjustment state
-  const handleSave = async () => {
+  const handleSave = async (event?: React.MouseEvent<HTMLButtonElement>) => {
+    // The editor can be mounted below consumer-provided markup. Prevent an
+    // accidental enclosing form from navigating away while the image is saved.
+    event?.preventDefault();
+    event?.stopPropagation();
     // Apply filters to create a new saved version
     const ops = buildOperations();
     
@@ -567,16 +571,21 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
       
       if (res.ok) {
         const data = await res.json();
+        if (!data?.success || !Number.isInteger(data.image_id) || typeof data.image_url !== 'string') {
+          throw new Error('The server returned an incomplete save response');
+        }
         setCurrentImageId(data.image_id);
-        setImageSrc(`${getApiUrl()}${data.image_url}?t=${Date.now()}`);
+        // Rebuild the canonical same-origin image URL from the validated ID.
+        // This avoids trusting a malformed response URL or an old proxy path.
+        setImageSrc(`${getApiUrl()}/api/images/${data.image_id}?t=${Date.now()}`);
         // Reset state since changes are now baked in
         setState({ ...defaultState });
         setSavedState({ ...defaultState });
         setHasUnsavedChanges(false);
         toast.success(t('Changes saved!'));
       } else {
-        const err = await res.json();
-        toast.error(t('Save failed'), { description: err.detail });
+        const err = await res.json().catch(() => null);
+        toast.error(t('Save failed'), { description: err?.detail || t('Server error') });
       }
     } catch {
       toast.error(t('Save failed'));
@@ -893,7 +902,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
 
   return (
     <>
-      <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center">
+      <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center" onSubmitCapture={event => event.preventDefault()}>
         <div className="bg-background rounded-2xl w-[95vw] max-w-7xl h-[90vh] flex flex-col overflow-hidden shadow-2xl">
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b">

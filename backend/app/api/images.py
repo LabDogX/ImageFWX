@@ -203,15 +203,12 @@ async def get_image(
     if not Path(image.file_path).exists():
         raise HTTPException(status_code=404, detail="Image file not found")
     
-    # Use actual file extension for download filename
-    actual_extension = Path(image.file_path).suffix
-    original_stem = Path(image.original_filename).stem
-    download_filename = f"{original_stem}{actual_extension}"
-    
+    # This is the inline editor/gallery resource.  Do not send an attachment
+    # Content-Disposition header here: some embedded NAS webviews navigate to
+    # a failed download page after an edited image is loaded.
     return FileResponse(
         image.file_path,
         media_type=image.mime_type,
-        filename=download_filename
     )
 
 

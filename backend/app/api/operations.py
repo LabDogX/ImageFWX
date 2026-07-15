@@ -1170,7 +1170,10 @@ async def process_sync(
         stored_filename=stored_filename,
         file_path=output_path,
         thumbnail_path=thumb_path,  # Path is set, file will be created in background
-        mime_type=f"image/{actual_output_format}",
+        # ``image/jpeg`` is the standards-compliant MIME type.  Some embedded
+        # NAS browsers reject the commonly-used but non-standard ``image/jpg``
+        # returned by an edited image saved as JPG.
+        mime_type="image/jpeg" if actual_output_format in {"jpg", "jpeg"} else f"image/{actual_output_format}",
         file_size=Path(output_path).stat().st_size,
     )
     db.add(new_image)

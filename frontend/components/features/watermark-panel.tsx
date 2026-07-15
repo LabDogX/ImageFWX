@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
 import { SavedTemplate, templatesApi } from '@/lib/api';
 import { useLocale } from '@/components/providers/locale-provider';
 
@@ -59,9 +60,37 @@ function PositionSelect({ value, onChange }: { value: WatermarkPosition; onChang
   return <label className="text-xs">{t('Position')}<select className="mt-1 w-full rounded border bg-background p-2" value={value} onChange={event => onChange(event.target.value as WatermarkPosition)}>{positions.map(position => <option key={position} value={position}>{t(position)}</option>)}</select></label>;
 }
 
+function OpacityControl({ value, onChange }: { value: number; onChange: (value: number) => void }) {
+  const { t } = useLocale();
+  const percentage = Math.round(value * 100);
+  const update = (next: number) => onChange(Math.max(5, Math.min(100, next)) / 100);
+
+  return <label className="col-span-2 text-xs">
+    <span className="flex items-center justify-between"><span>{t('Opacity')}</span><span>{percentage}%</span></span>
+    <div className="mt-1 flex items-center gap-2">
+      <Slider className="flex-1" value={[percentage]} min={5} max={100} step={1} onValueChange={([next]) => update(next)} />
+      <Input className="w-20" type="number" min="5" max="100" step="1" value={percentage} onChange={event => update(Number(event.target.value) || 5)} aria-label={t('Opacity')} />
+      <span className="text-muted-foreground">%</span>
+    </div>
+  </label>;
+}
+
 function TextLayerCard({ title, value, onChange }: { title: string; value: TextWatermarkLayer; onChange: (changes: Partial<TextWatermarkLayer>) => void }) {
   const { t } = useLocale();
-  return <div className="space-y-2 rounded border p-3"><label className="flex items-center justify-between text-sm font-medium">{t(title)}<input type="checkbox" checked={value.enabled} onChange={event => onChange({ enabled: event.target.checked })} /></label>{value.enabled && <><Input value={value.text} maxLength={1000} onChange={event => onChange({ text: event.target.value })} placeholder={t('Enter watermark...')} /><div className="grid grid-cols-2 gap-2"><label className="text-xs">{t('Font')}<select className="mt-1 w-full rounded border bg-background p-2" value={value.font} onChange={event => onChange({ font: event.target.value })}>{fonts.map(([id, label]) => <option key={id} value={id}>{t(label)}</option>)}</select></label><label className="text-xs">{t('Size')}<Input className="mt-1" type="number" min="8" max="128" value={value.font_size} onChange={event => onChange({ font_size: Number(event.target.value) || 8 })} /></label><PositionSelect value={value.position} onChange={position => onChange({ position })} /><label className="text-xs">{t('Opacity')}<Input className="mt-1" type="number" min="0.05" max="1" step="0.05" value={value.opacity} onChange={event => onChange({ opacity: Number(event.target.value) || 0.05 })} /></label><label className="text-xs">{t('Text color')}<input className="mt-1 h-9 w-full" type="color" value={value.color} onChange={event => onChange({ color: event.target.value.toUpperCase() })} /></label><label className="text-xs">{t('Shadow color')}<input className="mt-1 h-9 w-full" type="color" value={value.shadow_color} onChange={event => onChange({ shadow_color: event.target.value.toUpperCase() })} /></label></div></>}</div>;
+  return <div className="space-y-2 rounded border p-3">
+    <label className="flex items-center justify-between text-sm font-medium">{t(title)}<input type="checkbox" checked={value.enabled} onChange={event => onChange({ enabled: event.target.checked })} /></label>
+    {value.enabled && <>
+      <Input value={value.text} maxLength={1000} onChange={event => onChange({ text: event.target.value })} placeholder={t('Enter watermark...')} />
+      <div className="grid grid-cols-2 gap-2">
+        <label className="text-xs">{t('Font')}<select className="mt-1 w-full rounded border bg-background p-2" value={value.font} onChange={event => onChange({ font: event.target.value })}>{fonts.map(([id, label]) => <option key={id} value={id}>{t(label)}</option>)}</select></label>
+        <label className="text-xs">{t('Size')}<Input className="mt-1" type="number" min="8" max="128" value={value.font_size} onChange={event => onChange({ font_size: Number(event.target.value) || 8 })} /></label>
+        <PositionSelect value={value.position} onChange={position => onChange({ position })} />
+        <OpacityControl value={value.opacity} onChange={opacity => onChange({ opacity })} />
+        <label className="text-xs">{t('Text color')}<input className="mt-1 h-9 w-full" type="color" value={value.color} onChange={event => onChange({ color: event.target.value.toUpperCase() })} /></label>
+        <label className="text-xs">{t('Shadow color')}<input className="mt-1 h-9 w-full" type="color" value={value.shadow_color} onChange={event => onChange({ shadow_color: event.target.value.toUpperCase() })} /></label>
+      </div>
+    </>}
+  </div>;
 }
 
 export function WatermarkPanel({ value, onChange, libraryImages, currentImageId }: { value: WatermarkStack; onChange: (value: WatermarkStack) => void; libraryImages: LibraryImage[]; currentImageId: number }) {
@@ -86,7 +115,7 @@ export function WatermarkPanel({ value, onChange, libraryImages, currentImageId 
     <div className="space-y-2 rounded border p-3"><label className="flex items-center justify-between text-sm font-medium">{t('Logo')}<input type="checkbox" checked={value.logo.enabled} onChange={event => onChange({ ...value, logo: { ...value.logo, enabled: event.target.checked } })} /></label>{value.logo.enabled && <><select className="w-full rounded border bg-background p-2 text-sm" value={value.logo.image_id ?? ''} onChange={event => onChange({ ...value, logo: { ...value.logo, image_id: event.target.value ? Number(event.target.value) : null } })}><option value="">{t('Select an uploaded image')}</option>{libraryImages.filter(candidate => candidate.id !== currentImageId && candidate.mimeType.startsWith('image/')).map(candidate => <option value={candidate.id} key={candidate.id}>{candidate.originalFilename}</option>)}</select><div className="grid grid-cols-2 gap-2"><PositionSelect value={value.logo.position} onChange={position => onChange({ ...value, logo: { ...value.logo, position } })} /><label className="text-xs">{t('Scale: {count}% of short edge', { count: value.logo.scale })}<Input className="mt-1" type="number" min="1" max="100" value={value.logo.scale} onChange={event => onChange({ ...value, logo: { ...value.logo, scale: Number(event.target.value) || 1 } })} /></label></div></>}</div>
     <TextLayerCard title="Primary text" value={value.primary_text} onChange={changes => updateText('primary_text', changes)} />
     <TextLayerCard title="Secondary text" value={value.secondary_text} onChange={changes => updateText('secondary_text', changes)} />
-    <div className="space-y-2 rounded border p-3"><label className="flex items-center justify-between text-sm font-medium">{t('Camera EXIF')}</label><label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={value.exif.enabled} onChange={event => updateExif({ enabled: event.target.checked })} /> {t('Show shooting settings')}</label>{value.exif.enabled && <><div className="grid grid-cols-2 gap-2"><PositionSelect value={value.exif.position} onChange={position => updateExif({ position })} /><label className="text-xs">{t('Size')}<Input className="mt-1" type="number" min="8" max="128" value={value.exif.font_size} onChange={event => updateExif({ font_size: Number(event.target.value) || 8 })} /></label><label className="text-xs">{t('Font')}<select className="mt-1 w-full rounded border bg-background p-2" value={value.exif.font} onChange={event => updateExif({ font: event.target.value })}>{fonts.map(([id, label]) => <option key={id} value={id}>{t(label)}</option>)}</select></label><label className="text-xs">{t('Separator')}<Input className="mt-1" maxLength={8} value={value.exif.separator} onChange={event => updateExif({ separator: event.target.value || ' · ' })} /></label></div><div className="flex flex-wrap gap-x-3 gap-y-1">{exifFields.map(field => <label key={field} className="text-xs"><input className="mr-1" type="checkbox" checked={value.exif.fields.includes(field)} onChange={event => updateExif({ fields: event.target.checked ? [...value.exif.fields, field] : value.exif.fields.filter(current => current !== field) })} />{t(field)}</label>)}</div><p className="text-xs text-muted-foreground">{t('GPS location is never read or displayed.')}</p></>}</div>
+    <div className="space-y-2 rounded border p-3"><label className="flex items-center justify-between text-sm font-medium">{t('Camera EXIF')}</label><label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={value.exif.enabled} onChange={event => updateExif({ enabled: event.target.checked })} /> {t('Show shooting settings')}</label>{value.exif.enabled && <><div className="grid grid-cols-2 gap-2"><PositionSelect value={value.exif.position} onChange={position => updateExif({ position })} /><label className="text-xs">{t('Size')}<Input className="mt-1" type="number" min="8" max="128" value={value.exif.font_size} onChange={event => updateExif({ font_size: Number(event.target.value) || 8 })} /></label><label className="text-xs">{t('Font')}<select className="mt-1 w-full rounded border bg-background p-2" value={value.exif.font} onChange={event => updateExif({ font: event.target.value })}>{fonts.map(([id, label]) => <option key={id} value={id}>{t(label)}</option>)}</select></label><label className="text-xs">{t('Separator')}<Input className="mt-1" maxLength={8} value={value.exif.separator} onChange={event => updateExif({ separator: event.target.value || ' · ' })} /></label><OpacityControl value={value.exif.opacity} onChange={opacity => updateExif({ opacity })} /></div><div className="flex flex-wrap gap-x-3 gap-y-1">{exifFields.map(field => <label key={field} className="text-xs"><input className="mr-1" type="checkbox" checked={value.exif.fields.includes(field)} onChange={event => updateExif({ fields: event.target.checked ? [...value.exif.fields, field] : value.exif.fields.filter(current => current !== field) })} />{t(field)}</label>)}</div><p className="text-xs text-muted-foreground">{t('GPS location is never read or displayed.')}</p></>}</div>
     {hasLayer && <p className="rounded bg-muted p-2 text-xs text-muted-foreground">{t('Layers are rendered in order: logo, primary text, secondary text, camera EXIF.')}</p>}
     <Button type="button" variant="outline" className="w-full" onClick={() => onChange(defaultWatermarkStack)}>{t('Reset watermark')}</Button>
   </div>;
