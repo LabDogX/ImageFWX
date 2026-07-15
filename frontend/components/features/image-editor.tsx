@@ -263,7 +263,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
         if ((error as DOMException).name !== 'AbortError') { /* keep last valid preview */ }
       }
       finally { if (requestId === previewRequestRef.current) setIsBorderPreviewing(false); }
-    }, 350);
+    }, 300);
     return () => {
       window.clearTimeout(timer);
       controller.abort();
