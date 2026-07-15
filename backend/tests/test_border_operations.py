@@ -132,6 +132,8 @@ def test_watermark_stack_validates_all_fixed_layers():
         Operation(operation="watermark-stack", params={"logo": {"enabled": True}})
     with pytest.raises(ValidationError):
         Operation(operation="watermark-stack", params={"exif": {"fields": ["gps"]}})
+    with pytest.raises(ValidationError):
+        Operation(operation="watermark-stack", params={"exif": {"text": "legacy client field"}})
 
 
 def test_template_payloads_use_the_same_strict_operation_contract():

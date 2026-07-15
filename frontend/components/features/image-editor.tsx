@@ -699,7 +699,13 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
     }
     
     const watermarkActive = state.watermarkStack.logo.enabled || state.watermarkStack.primary_text.enabled || state.watermarkStack.secondary_text.enabled || state.watermarkStack.exif.enabled;
-    if (watermarkActive) ops.push({ operation: "watermark-stack", params: state.watermarkStack });
+    if (watermarkActive) {
+      // Older in-browser state and saved templates may contain the historic
+      // ``exif.text`` field. EXIF values are generated on the server, and the
+      // strict API correctly rejects that extra client field, so omit it here.
+      const { text: _legacyExifText, ...exif } = state.watermarkStack.exif as typeof state.watermarkStack.exif & { text?: unknown };
+      ops.push({ operation: "watermark-stack", params: { ...state.watermarkStack, exif } });
+    }
     
     return ops;
   };
@@ -1265,13 +1271,13 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                             onValueChange={([v]) => setState(s => ({ ...s, resizePercent: v }))} 
                             min={10} max={200} step={5}
                           />
-                          <div className="flex gap-2">
+                          <div className="grid grid-cols-3 gap-2">
                             {[25, 50, 75, 100, 150, 200].map(p => (
                               <Button
                                 key={p}
                                 variant={state.resizePercent === p ? 'default' : 'outline'}
                                 size="sm"
-                                className="flex-1 text-xs"
+                                className="w-full text-xs"
                                 onClick={() => setState(s => ({ ...s, resizePercent: p }))}
                               >
                                 {p}%

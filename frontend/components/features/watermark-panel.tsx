@@ -40,7 +40,13 @@ export const defaultWatermarkStack: WatermarkStack = {
   logo: { enabled: false, image_id: null, position: 'northwest', scale: 12, opacity: 1, offset_x: 0, offset_y: 0 },
   primary_text: textLayer('southwest'),
   secondary_text: { ...textLayer('southwest'), font_size: 18, offset_y: 42 },
-  exif: { ...textLayer('southeast'), font_size: 16, fields: ['camera', 'lens', 'aperture', 'shutter_speed', 'iso', 'focal_length'], separator: ' · ' },
+  // EXIF is not a text layer: keeping this object explicit prevents a legacy
+  // ``text`` property from reaching the strict backend EXIF schema.
+  exif: {
+    enabled: false, position: 'southeast', font_size: 16, opacity: 0.7,
+    color: '#FFFFFF', shadow_color: '#000000', font: 'noto-sans-sc', offset_x: 0, offset_y: 0,
+    fields: ['camera', 'lens', 'aperture', 'shutter_speed', 'iso', 'focal_length'], separator: ' · ',
+  },
 };
 
 const positions: WatermarkPosition[] = ['northwest', 'north', 'northeast', 'west', 'center', 'east', 'southwest', 'south', 'southeast'];
