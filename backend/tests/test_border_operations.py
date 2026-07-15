@@ -64,6 +64,10 @@ def test_generated_frame_dimensions_and_source_offsets():
     assert dimensions == (1060, 840)
     assert "-geometry +40+10" in args
     assert "gradient:'#112233-#DDEEFF'" in args
+    # Rotated gradients retain a full base gradient behind transparent corners
+    # instead of allowing ImageMagick's default white background to show.
+    assert "-background none" in args
+    assert args.count("gradient:'#112233-#DDEEFF'") == 2
 
     frosted = border(
         mode="matte", style="frosted", top=10, right=20, bottom=30, left=40,

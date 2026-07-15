@@ -151,6 +151,12 @@ const watermarkPreviewFonts: Record<WatermarkFont, string> = {
   'noto-serif-kr': '"Noto Serif CJK KR", "Source Han Serif KR", serif',
 };
 
+const watermarkPreviewPositions: Record<WatermarkStack['primary_text']['position'], string> = {
+  northwest: 'top-4 left-4', north: 'top-4 left-1/2 -translate-x-1/2', northeast: 'top-4 right-4',
+  west: 'top-1/2 left-4 -translate-y-1/2', center: 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2', east: 'top-1/2 right-4 -translate-y-1/2',
+  southwest: 'bottom-4 left-4', south: 'bottom-4 left-1/2 -translate-x-1/2', southeast: 'bottom-4 right-4',
+};
+
 const watermarkFontOptions: ReadonlyArray<{ value: WatermarkFont; label: string }> = [
   { value: 'sans', label: 'Sans' },
   { value: 'sans-bold', label: 'Sans Bold' },
@@ -226,25 +232,42 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
   const watermarkStackActive = state.watermarkStack.logo.enabled || state.watermarkStack.primary_text.enabled || state.watermarkStack.secondary_text.enabled || state.watermarkStack.exif.enabled;
   const serializedBorder = JSON.stringify(state.border);
   const serializedWatermarkStack = JSON.stringify(state.watermarkStack);
+  const previewSettingsKey = `${currentImageId}:${serializedBorder}:${serializedWatermarkStack}`;
+  const [renderedPreviewKey, setRenderedPreviewKey] = useState<string | null>(null);
+  // Text is shown locally while the debounced ImageMagick preview is in
+  // flight. Once the backend result arrives, it replaces this temporary layer.
+  const showImmediateWatermarkPreview = watermarkStackActive && renderedPreviewKey !== previewSettingsKey;
 
   // A debounced backend preview uses the exact ImageMagick command builder used
   // by export.  Old responses are ignored so a fast slider cannot repaint stale data.
   useEffect(() => {
     if (!state.border.enabled && !watermarkStackActive) return;
     const requestId = ++previewRequestRef.current;
+    const controller = new AbortController();
     const timer = window.setTimeout(async () => {
       setIsBorderPreviewing(true);
       try {
         const response = await fetch(`${getApiUrl()}/api/operations/live-preview`, {
           method: 'POST', headers: getAuthHeaders(),
           body: JSON.stringify({ image_id: currentImageId, operations: buildOperations(), max_size: 800 }),
+          signal: controller.signal,
         });
         const data = await response.json();
-        if (response.ok && data.preview && requestId === previewRequestRef.current) setImageSrc(data.preview);
-      } catch { /* keep the last valid preview */ }
+        if (response.ok && data.preview && requestId === previewRequestRef.current) {
+          setImageSrc(data.preview);
+          setRenderedPreviewKey(previewSettingsKey);
+        }
+      } catch (error) {
+        // A newer edit deliberately aborts its older request.  Keep the last
+        // valid image in either case instead of flashing back to the original.
+        if ((error as DOMException).name !== 'AbortError') { /* keep last valid preview */ }
+      }
       finally { if (requestId === previewRequestRef.current) setIsBorderPreviewing(false); }
     }, 350);
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
   // The serialized settings avoid a new effect from unrelated editor state.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentImageId, serializedBorder, serializedWatermarkStack]);
@@ -256,6 +279,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
     if (state.border.enabled || watermarkStackActive) return;
     previewRequestRef.current += 1;
     setIsBorderPreviewing(false);
+    setRenderedPreviewKey(null);
     const source = isPdf
       ? `${getApiUrl()}/api/images/${currentImageId}/preview`
       : `${getApiUrl()}/api/images/${currentImageId}`;
@@ -861,7 +885,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
   // Save button component to reuse in all tabs
   const SaveButton = () => (
     hasUnsavedChanges ? (
-      <Button className="w-full mt-4" variant="outline" onClick={handleSave} disabled={isProcessing}>
+      <Button type="button" className="w-full mt-4" variant="outline" onClick={handleSave} disabled={isProcessing}>
         <Save className="h-4 w-4 mr-2" /> {t('Save Changes')}
       </Button>
     ) : null
@@ -1007,6 +1031,28 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                     {state.watermarkText}
                   </div>
                 )}
+
+                {/* The editable watermark stack uses the server for the final
+                    preview. These temporary text layers make each keystroke
+                    visible immediately while that debounced request runs. */}
+                {!cropMode && showImmediateWatermarkPreview && [
+                  state.watermarkStack.primary_text,
+                  state.watermarkStack.secondary_text,
+                ].map((layer, index) => layer.enabled && layer.text && (
+                  <div
+                    key={`watermark-preview-${index}`}
+                    className={cn('absolute pointer-events-none', watermarkPreviewPositions[layer.position])}
+                    style={{
+                      fontSize: `${Math.max(10, layer.font_size * (previewLayoutSize.w > 0 ? previewLayoutSize.w / Math.max(naturalSize.w, 800) : 1) * zoom)}px`,
+                      fontFamily: watermarkPreviewFonts[layer.font as WatermarkFont] || 'sans-serif',
+                      color: layer.color,
+                      opacity: layer.opacity,
+                      textShadow: `1px 1px 0 ${layer.shadow_color}`,
+                    }}
+                  >
+                    {layer.text}
+                  </div>
+                ))}
               </div>
               
               {/* Zoom */}
@@ -1469,7 +1515,7 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
                   </div>
                 </div>
                 
-                <Button className="w-full" size="lg" onClick={handleDownload} disabled={isProcessing}>
+                <Button type="button" className="w-full" size="lg" onClick={handleDownload} disabled={isProcessing}>
                   {isProcessing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Download className="h-4 w-4 mr-2" />}
                   {t('Download')}
                 </Button>
@@ -1485,9 +1531,9 @@ export function ImageEditor({ image, onClose, onSave }: ImageEditorProps) {
           <DialogHeader><DialogTitle>{t('Unsaved Changes')}</DialogTitle></DialogHeader>
           <p className="text-sm text-muted-foreground">{t('You have unsaved changes. What would you like to do?')}</p>
           <DialogFooter className="gap-2">
-            <Button variant="ghost" onClick={() => { setShowSaveDialog(false); setPendingTab(null); }}>{t('Cancel')}</Button>
-            <Button variant="outline" onClick={discardAndContinue}>{t('Discard')}</Button>
-            <Button onClick={saveAndContinue}>{t('Save Changes')}</Button>
+            <Button type="button" variant="ghost" onClick={() => { setShowSaveDialog(false); setPendingTab(null); }}>{t('Cancel')}</Button>
+            <Button type="button" variant="outline" onClick={discardAndContinue}>{t('Discard')}</Button>
+            <Button type="button" onClick={saveAndContinue}>{t('Save Changes')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

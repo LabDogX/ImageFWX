@@ -158,14 +158,18 @@ def _build_generated_border_canvas(
     placement = f"{source_x:+d}{source_y:+d}"
     if style == "gradient":
         gradient = shlex.quote(f"{params['gradient_start']}-{params['gradient_end']}")
-        # A diagonal-sized source survives any validated rotation before the
-        # final canvas is center-cropped. Using the final rectangle directly
-        # loses pixels at 90/270 degrees on ImageMagick 6 and 7.
+        # ``-rotate`` produces transparent corner pixels.  A plain rotated
+        # gradient therefore showed ImageMagick's white background in the
+        # bottom-right corner of some frames.  Start with a full-size gradient
+        # and composite the rotated gradient over it.  The transparent pixels
+        # retain the base gradient, so every frame edge remains coloured.
         gradient_size = math.ceil(math.hypot(canvas_w, canvas_h))
         return [
+            "\\(", f"-size {canvas_w}x{canvas_h}", f"gradient:{gradient}",
             "\\(", f"-size {gradient_size}x{gradient_size}", f"gradient:{gradient}",
-            f"-rotate {int(params['gradient_angle'])}", "-gravity Center",
+            "-background none", f"-rotate {int(params['gradient_angle'])}", "-gravity Center",
             f"-crop {canvas_w}x{canvas_h}+0+0", "+repage", "\\)",
+            "-compose over", "-composite", "+repage", "\\)",
             "-swap 0,1", "-gravity NorthWest", f"-geometry {placement}",
             "-compose over", "-composite", "+repage",
         ]
